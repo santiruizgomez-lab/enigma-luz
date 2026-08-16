@@ -2,122 +2,113 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENIGMA v6.0</title>
+    <title>ENIGMA ENGINE v7.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #E5E7EB; }
-        .gold-text { color: #C9A063; }
-        .glass-panel { background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(201, 160, 99, 0.3); }
-        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.3); transition: all 0.3s; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 20px; width: 100%; text-align: left; margin-bottom: 10px; }
-        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); }
-        .sidebar { position: fixed; right: 0; top: 0; height: 100%; width: 300px; z-index: 100; transition: transform 0.3s; background: #0B0E14; border-left: 1px solid #C9A063; padding: 20px; transform: translateX(100%); }
-        .sidebar.open { transform: translateX(0); }
+        body { background: #0B0E14; color: #E5E7EB; font-family: serif; }
+        .gold { color: #C9A063; }
+        .panel { background: rgba(31, 41, 55, 0.5); border: 1px solid #C9A063; border-radius: 20px; padding: 2rem; }
+        .btn { width: 100%; padding: 1rem; margin-top: 1rem; border: 1px solid #C9A063; border-radius: 10px; text-align: left; transition: 0.3s; }
+        .btn:hover { background: rgba(201, 160, 99, 0.1); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center">
-    
-    <nav class="w-full max-w-4xl flex justify-between items-center p-6 border-b border-gold/20">
-        <h1 class="text-2xl gold-text font-bold italic">ENIGMA</h1>
-        <div class="flex gap-4">
-            <button onclick="document.getElementById('side-notes').classList.toggle('open')" class="text-xs gold-text uppercase">📔 Diario</button>
-            <button onclick="reiniciar()" class="text-xs text-gray-500 uppercase">Reiniciar</button>
-        </div>
+<body class="p-4 flex flex-col items-center">
+    <nav class="w-full max-w-2xl flex justify-between py-4 border-b border-gray-800 mb-8">
+        <h1 class="text-2xl gold font-bold">ENIGMA</h1>
+        <button onclick="reiniciar()" class="text-xs gray-500 uppercase">Reset</button>
     </nav>
 
-    <main class="max-w-4xl w-full p-6 space-y-6">
-        <div id="status-bar" class="flex justify-between text-[10px] gold-text uppercase tracking-widest px-2">
-            <div id="valor"></div>
-            <div id="mochila-txt"></div>
+    <main class="w-full max-w-2xl">
+        <div id="status" class="text-[10px] gold uppercase mb-4">Cargando motor...</div>
+        
+        <div id="game-card" class="panel">
+            <div id="img-cont" class="hidden mb-4 rounded-lg overflow-hidden">
+                <img id="sc-img" src="" class="w-full h-48 object-cover">
+            </div>
+            <h2 id="sc-titulo" class="text-2xl font-bold gold mb-4 text-center">Iniciando...</h2>
+            <p id="sc-texto" class="text-lg italic mb-6"></p>
+            <div id="sc-opciones"></div>
         </div>
 
-        <div id="escena-container" class="glass-panel p-8 rounded-[2rem] shadow-2xl min-h-[300px]">
-            <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-gold/10">
-                <img id="escena-img" src="" class="w-full h-auto object-cover max-h-[400px]">
-            </div>
-            <h2 id="escena-titulo" class="text-3xl font-bold gold-text mb-4"></h2>
-            <div id="escena-texto" class="text-xl text-gray-300 italic mb-8"></div>
-            <div id="opciones"></div>
+        <div id="error-log" class="hidden mt-8 p-4 bg-red-900/20 border border-red-500 text-red-500 text-xs rounded-lg">
+            <strong>Error Detectado:</strong> <span id="error-msg"></span>
         </div>
     </main>
-
-    <div id="side-notes" class="sidebar">
-        <h3 class="gold-text mb-4">DIARIO DE LUZ</h3>
-        <textarea id="notas" oninput="saveNotes()" class="w-full h-64 bg-gray-900 text-white p-4 rounded-xl border border-gold/20 outline-none" placeholder="Anota pistas aquí..."></textarea>
-    </div>
 
     <script>
         const URL = 'https://wsaxismjuiyvapdknjoi.supabase.co';
         const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
-        const supabaseClient = supabase.createClient(URL, KEY);
+        
+        let sb;
+        let save = JSON.parse(localStorage.getItem('enigma_save')) || { id: 1, items: [] };
 
-        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { escena: 1, valor: 3, items: [], notas: "" };
-
-        async function cargarEscena(id) {
-            estado.escena = id;
-            localStorage.setItem('enigma_save', JSON.stringify(estado));
-            
-            const { data: escena, error } = await supabaseClient.from('escenas').select('*').eq('id', id).single();
-            const { data: decisiones } = await supabaseClient.from('decisiones').select('*').eq('escena_origen_id', id);
-
-            if (error || !escena) { reiniciar(); return; }
-
-            // Render Imagen
-            const imgCont = document.getElementById('img-cont');
-            if (escena.imagen_url) { 
-                document.getElementById('escena-img').src = escena.imagen_url;
-                imgCont.classList.remove('hidden');
-            } else { imgCont.classList.add('hidden'); }
-
-            document.getElementById('escena-titulo').innerText = escena.titulo_escena;
-            document.getElementById('escena-texto').innerText = escena.texto_narrativo;
-
-            const divOpciones = document.getElementById('opciones');
-            divOpciones.innerHTML = '';
-
-            decisiones.forEach(d => {
-                const b = document.createElement('button');
-                b.className = "choice-btn";
-                
-                const bloqueado = d.item_requerido && !estado.items.includes(d.item_requerido);
-                
-                if (bloqueado) {
-                    b.innerHTML = `<span>🔒 ${d.texto_boton}</span> <span class="text-[10px] gold-text block">Necesitas: ${d.item_requerido}</span>`;
-                    b.disabled = true;
-                    b.style.opacity = "0.4";
-                } else {
-                    b.innerHTML = `<span>${d.texto_boton}</span>`;
-                    b.onclick = () => {
-                        if (d.texto_boton.includes("[CÓDIGO]")) {
-                            const res = prompt("Introduce el código de tu diario:");
-                            if (res !== "7") { alert("Código erróneo. El frío te envuelve..."); estado.valor--; actualizarUI(); return; }
-                        }
-                        if (d.item_entregado) {
-                            if(!estado.items.includes(d.item_entregado)) estado.items.push(d.item_entregado);
-                        }
-                        cargarEscena(d.escena_destino_id);
-                    };
-                }
-                divOpciones.appendChild(b);
-            });
-            actualizarUI();
-        }
-
-        function actualizarUI() {
-            document.getElementById('valor').innerText = "❤️".repeat(Math.max(0, estado.valor));
-            document.getElementById('mochila-txt').innerText = "Inventario: " + (estado.items.length || "Vacío");
-            if (estado.valor <= 0) { alert("Has perdido el juicio... el Gran Gris te atrapó."); reiniciar(); }
-        }
-
-        function saveNotes() { estado.notas = document.getElementById('notas').value; localStorage.setItem('enigma_save', JSON.stringify(estado)); }
-        function reiniciar() { localStorage.removeItem('enigma_save'); location.reload(); }
-
-        window.onload = () => {
-            document.getElementById('notas').value = estado.notas;
-            cargarEscena(estado.escena);
+        window.onload = async () => {
+            try {
+                sb = supabase.createClient(URL, KEY);
+                await cargar(save.id);
+            } catch (e) {
+                panic(e.message);
+            }
         };
+
+        async function cargar(id) {
+            document.getElementById('status').innerText = "Conectando con Supabase...";
+            
+            const { data: esc, error: err1 } = await sb.from('escenas').select('*').eq('id', id).single();
+            const { data: decs, error: err2 } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
+
+            if (err1 || !esc) return panic("No encuentro la escena " + id + ". Pulsa Reset.");
+
+            // UI
+            document.getElementById('sc-titulo').innerText = esc.titulo_escena;
+            document.getElementById('sc-texto').innerText = esc.texto_narrativo;
+            
+            if (esc.imagen_url) {
+                document.getElementById('sc-img').src = esc.imagen_url;
+                document.getElementById('img-cont').classList.remove('hidden');
+            } else {
+                document.getElementById('img-cont').classList.add('hidden');
+            }
+
+            const optDiv = document.getElementById('sc-opciones');
+            optDiv.innerHTML = '';
+
+            if (decs) {
+                decs.forEach(d => {
+                    const b = document.createElement('button');
+                    b.className = "btn";
+                    const bloqueado = d.item_requerido && !save.items.includes(d.item_requerido);
+                    
+                    b.innerHTML = bloqueado ? `🔒 ${d.texto_boton} (Falta ${d.item_requerido})` : d.texto_boton;
+                    b.disabled = bloqueado;
+                    
+                    b.onclick = () => {
+                        if (d.item_entregado && !save.items.includes(d.item_entregado)) {
+                            save.items.push(d.item_entregado);
+                        }
+                        save.id = d.escena_destino_id;
+                        localStorage.setItem('enigma_save', JSON.stringify(save));
+                        cargar(d.escena_destino_id);
+                    };
+                    optDiv.appendChild(b);
+                });
+            }
+            
+            document.getElementById('status').innerText = "Mochila: " + (save.items.join(', ') || "Vacía");
+        }
+
+        function panic(m) {
+            document.getElementById('error-log').classList.remove('hidden');
+            document.getElementById('error-msg').innerText = m;
+            document.getElementById('status').innerText = "ERROR";
+        }
+
+        function reiniciar() {
+            localStorage.removeItem('enigma_save');
+            location.reload();
+        }
     </script>
 </body>
 </html>
