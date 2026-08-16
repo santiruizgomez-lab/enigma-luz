@@ -1,67 +1,20 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>ENIGMA: El Bosque de los Espejos Rotos</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: #05070a; color: #d1d5db; font-family: serif; }
-        .gold { color: #C9A063; }
-        .glass { background: rgba(20, 25, 35, 0.9); border: 1px solid rgba(201, 160, 99, 0.2); backdrop-filter: blur(10px); }
-        .btn { width: 100%; padding: 1.2rem; border: 1px solid rgba(201, 160, 99, 0.3); border-radius: 12px; text-align: left; transition: 0.3s; background: rgba(255,255,255,0.02); margin-bottom: 0.8rem; }
-        .btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); }
-        .sidebar { position: fixed; right: 0; top: 0; height: 100%; width: 300px; transform: translateX(100%); transition: 0.4s; z-index: 100; border-left: 1px solid #C9A063; }
-        .sidebar.open { transform: translateX(0); }
-    </style>
-</head>
-<body class="p-8 flex flex-col items-center min-h-screen">
-    <nav class="w-full max-w-5xl flex justify-between items-center mb-10 border-b border-gray-800 pb-6">
-        <h1 class="text-4xl gold font-bold italic tracking-tighter">ENIGMA</h1>
-        <div class="flex gap-4">
-            <div id="hearts" class="text-2xl"></div>
-            <button onclick="document.getElementById('diary').classList.toggle('open')" class="px-5 py-2 glass gold rounded-full text-xs font-bold border-gold">📔 DIARIO</button>
-            <button onclick="resetGame()" class="text-xs text-gray-600 uppercase font-bold">Reset</button>
-        </div>
-    </nav>
-
-    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-10">
-        <aside class="hidden lg:block space-y-4">
-            <h3 class="text-xs uppercase gold font-bold tracking-widest text-center">Mochila</h3>
-            <div id="inv-list" class="space-y-2"></div>
-        </aside>
-
-        <section class="lg:col-span-3">
-            <div class="glass p-10 rounded-[3rem] shadow-2xl border-2">
-                <div id="img-cont" class="hidden mb-10 rounded-3xl overflow-hidden border border-gold/20 shadow-2xl">
-                    <img id="sc-img" src="" class="w-full h-auto object-cover max-h-[450px]">
-                </div>
-                <h2 id="sc-titulo" class="text-4xl font-bold gold mb-8"></h2>
-                <div id="sc-texto" class="text-2xl leading-relaxed text-gray-300 italic mb-12"></div>
-                <div id="sc-opciones" class="grid grid-cols-1 gap-4"></div>
-            </div>
-        </section>
-    </main>
-
-    <div id="diary" class="sidebar glass p-8 shadow-2xl">
-        <h3 class="gold font-bold uppercase mb-6 text-center">Grimorio de Luz</h3>
-        <textarea id="notes-area" oninput="saveNotes()" class="w-full h-[80%] bg-transparent border border-gray-800 p-4 text-sm rounded-xl focus:border-gold outline-none text-white" placeholder="Anota pistas aquí..."></textarea>
-    </div>
-
-    <script>
+<script>
         const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
-        let save = JSON.parse(localStorage.getItem('enigma_v15')) || { id: 1, items: [], hp: 3, notes: "" };
+
+        let save = JSON.parse(localStorage.getItem('enigma_v20')) || { id: 1, items: [], hp: 3, notes: "" };
 
         async function engine(id) {
             save.id = id;
-            localStorage.setItem('enigma_v15', JSON.stringify(save));
+            localStorage.setItem('enigma_v20', JSON.stringify(save));
+            
             const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
             if(!esc) return resetGame();
+
             document.getElementById('sc-titulo').innerText = esc.titulo_escena;
             document.getElementById('sc-texto').innerHTML = esc.texto_narrativo.split('\n').map(p => `<p class="mb-4">${p}</p>`).join('');
-            
+
             const imgCont = document.getElementById('img-cont');
             if(esc.imagen_url) { document.getElementById('sc-img').src = esc.imagen_url; imgCont.classList.remove('hidden'); }
             else { imgCont.classList.add('hidden'); }
@@ -71,18 +24,23 @@
 
             decs.forEach(d => {
                 const b = document.createElement('button');
-                b.className = "btn flex justify-between items-center group";
+                b.className = "choice-btn flex justify-between items-center group";
                 const locked = d.item_requerido && !save.items.includes(d.item_requerido);
+                
                 b.innerHTML = locked ? `<span>🔒 ${d.texto_boton}</span>` : `<span>${d.texto_boton}</span> <span class="gold opacity-0 group-hover:opacity-100 transition">→</span>`;
                 b.disabled = locked;
 
                 b.onclick = () => {
-                    // Lógica de acertijos por texto (Escenas 19 y 32)
-                    if((id === 19 && d.escena_destino_id === 21) || (id === 32 && d.escena_destino_id === 34)) {
+                    // VALIDACIÓN DE ACERTIJOS SEGÚN TU HISTORIA
+                    if(id === 19 || id === 32 || id === 46) {
                         const res = prompt("Escribe tu respuesta:").toLowerCase().trim();
-                        const correctas = { 19: ["nube", "una nube"], 32: ["la letra e", "e"] };
+                        const correctas = { 
+                            19: ["nube", "una nube"], 
+                            32: ["la letra e", "e"],
+                            46: ["2-0-7", "207"] 
+                        };
                         if(!correctas[id].includes(res)) {
-                            alert("La criatura ruge: INCORRECTO. Pierdes valor.");
+                            alert("¡ERROR! Una descarga de energía te golpea.");
                             save.hp--; updateUI(); return;
                         }
                     }
@@ -97,12 +55,10 @@
         function updateUI() {
             document.getElementById('hearts').innerText = "❤️".repeat(Math.max(0, save.hp));
             document.getElementById('inv-list').innerHTML = save.items.map(i => `<div class="p-2 border border-gold/20 rounded text-[10px] gold uppercase text-center">🏷️ ${i}</div>`).join('');
-            if(save.hp <= 0) { alert("El bosque te ha consumido..."); resetGame(); }
+            if(save.hp <= 0) { alert("Tu luz se ha extinguido..."); resetGame(); }
         }
 
-        function saveNotes() { save.notes = document.getElementById('notes-area').value; localStorage.setItem('enigma_v15', JSON.stringify(save)); }
-        function resetGame() { localStorage.removeItem('enigma_v15'); location.reload(); }
+        function saveNotes() { save.notes = document.getElementById('notes-area').value; localStorage.setItem('enigma_v20', JSON.stringify(save)); }
+        function resetGame() { localStorage.removeItem('enigma_v20'); location.reload(); }
         window.onload = () => { document.getElementById('notes-area').value = save.notes; engine(save.id); };
     </script>
-</body>
-</html>
