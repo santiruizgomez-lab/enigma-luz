@@ -29,6 +29,10 @@
     <main class="max-w-3xl w-full p-6 pb-24">
         <div id="pantalla-juego" class="space-y-8 animate-fade-in">
            <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-500">
+               <!-- Pon esto justo encima del <h2> de escena-titulo -->
+<div id="contenedor-imagen" class="hidden mb-6 rounded-xl overflow-hidden border border-gold/10">
+    <img id="escena-imagen" src="" alt="Ilustración" class="w-full h-auto object-cover max-h-[400px]">
+</div>
                 <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
                 <div id="escena-texto" class="text-gray-300"></div>
             </div>
@@ -63,28 +67,40 @@ async function cargarEscena(id) {
 
             if (!escena) return;
 
-            // --- NUEVO: SISTEMA DE EMOCIONES (Cambio de color visual) ---
+            // --- 1. LÓGICA DE IMÁGENES ---
+            const contenedorImagen = document.getElementById('contenedor-imagen');
+            const imgElemento = document.getElementById('escena-imagen');
+            
+            if (escena.imagen_url && escena.imagen_url.trim() !== "") {
+                imgElemento.src = escena.imagen_url;
+                contenedorImagen.classList.remove('hidden');
+            } else {
+                contenedorImagen.classList.add('hidden');
+            }
+
+            // --- 2. SISTEMA DE EMOCIONES (Cambio de color visual) ---
             const contenedorPrincipal = document.getElementById('escena-container');
             if (contenedorPrincipal) {
                 if (escena.titulo_escena.includes("Ira")) {
-                    contenedorPrincipal.style.borderColor = "#ef4444"; // Rojo vibrante
+                    contenedorPrincipal.style.borderColor = "#ef4444"; 
                     contenedorPrincipal.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
                 } else if (escena.titulo_escena.includes("Tristeza")) {
-                    contenedorPrincipal.style.borderColor = "#3b82f6"; // Azul profundo
+                    contenedorPrincipal.style.borderColor = "#3b82f6"; 
                     contenedorPrincipal.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.2)";
                 } else if (escena.titulo_escena.includes("Miedo")) {
-                    contenedorPrincipal.style.borderColor = "#6b7280"; // Gris sombra
+                    contenedorPrincipal.style.borderColor = "#6b7280"; 
                     contenedorPrincipal.style.boxShadow = "0 0 20px rgba(107, 114, 128, 0.2)";
                 } else {
-                    contenedorPrincipal.style.borderColor = "rgba(201, 160, 99, 0.2)"; // Oro original
+                    contenedorPrincipal.style.borderColor = "rgba(201, 160, 99, 0.2)"; 
                     contenedorPrincipal.style.boxShadow = "none";
                 }
             }
-            // ------------------------------------------------------------
 
+            // --- 3. RENDERIZAR TEXTOS ---
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
 
+            // --- 4. RENDERIZAR OPCIONES ---
             const contenedor = document.getElementById('opciones');
             contenedor.innerHTML = '';
 
@@ -92,6 +108,7 @@ async function cargarEscena(id) {
                 const b = document.createElement('button');
                 b.className = "w-full p-5 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
                 
+                // LÓGICA DE OBJETOS: "Ticket Dorado"
                 const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa");
                 const tieneTicket = estado.inventario.includes("Ticket Dorado");
 
@@ -99,7 +116,7 @@ async function cargarEscena(id) {
                     b.innerHTML = `<span class="opacity-40 italic">🔒 ${opc.texto_boton}</span> <span class="text-[10px] gold-text">Falta Ticket</span>`;
                     b.disabled = true;
                 } else {
-                    b.innerHTML = `<span class="font-bold">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
+                    b.innerHTML = `<span class="font-bold text-lg">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
                     b.onclick = () => {
                         if (opc.texto_boton.includes("Buscar entre los arbustos")) recolectar("Ticket Dorado");
                         cargarEscena(opc.escena_destino_id);
