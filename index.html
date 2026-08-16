@@ -2,25 +2,31 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ENIGMA - Fix Final</title>
+    <title>ENIGMA - START</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-[#0B0E14] text-white p-10 font-serif">
-    <div class="max-w-xl mx-auto border border-yellow-600/30 p-8 rounded-3xl bg-gray-900/40">
-        <h1 id="titulo" class="text-3xl font-bold text-[#C9A063] mb-4 text-center">Cargando...</h1>
-        <div id="img-cont" class="hidden mb-6"><img id="foto" class="w-full rounded-xl border border-yellow-600/20"></div>
-        <p id="texto" class="text-xl italic text-gray-300 mb-8 text-center"></p>
+<body class="bg-[#0B0E14] text-white p-10 font-serif flex flex-col items-center">
+    <div class="max-w-xl w-full border border-yellow-600/30 p-8 rounded-3xl bg-gray-900/40 shadow-2xl">
+        <h1 id="titulo" class="text-3xl font-bold text-[#C9A063] mb-6 text-center text-orange-200">Cargando...</h1>
+        <div id="img-cont" class="hidden mb-6"><img id="foto" class="w-full rounded-xl border border-yellow-900/20 shadow-lg"></div>
+        <p id="texto" class="text-xl italic text-gray-300 mb-8 text-center leading-relaxed"></p>
         <div id="opciones" class="space-y-4"></div>
     </div>
-    <script>
-        const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
 
-        async function cargar(id) {
-            const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
-            const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
+    <script>
+        const CLIENTE = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
+
+        async function irA(id) {
+            console.log("Cargando escena:", id);
+            const { data: esc, error: err1 } = await CLIENTE.from('escenas').select('*').eq('id', id).single();
+            const { data: decs, error: err2 } = await CLIENTE.from('decisiones').select('*').eq('escena_origen_id', id);
             
-            if(!esc) { alert("Error: No hay datos en Supabase."); return; }
+            if (err1 || !esc) {
+                document.getElementById('titulo').innerText = "Error de Datos";
+                document.getElementById('texto').innerText = "Vuelve a ejecutar el SQL en Supabase y refresca.";
+                return;
+            }
 
             document.getElementById('titulo').innerText = esc.titulo_escena;
             document.getElementById('texto').innerText = esc.texto_narrativo;
@@ -34,14 +40,15 @@
             div.innerHTML = '';
             decs.forEach(d => {
                 const btn = document.createElement('button');
-                btn.className = "w-full p-4 border border-yellow-600/40 rounded-xl hover:bg-yellow-600/10 transition text-left";
-                btn.innerText = d.texto_boton;
-                btn.onclick = () => cargar(d.escena_destino_id);
+                btn.className = "w-full p-4 border border-yellow-600/40 rounded-xl hover:bg-yellow-600/20 transition text-left text-orange-100 font-bold";
+                btn.innerText = d.texto_boton + " →";
+                btn.onclick = () => irA(d.escena_destino_id);
                 div.appendChild(btn);
             });
         }
         
-        window.onload = () => { localStorage.clear(); cargar(1); };
+        // Arrancamos siempre de cero
+        window.onload = () => { irA(1); };
     </script>
 </body>
 </html>
