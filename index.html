@@ -11,45 +11,56 @@
         body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #F8F9FA; }
         .gold-border { border-color: #C9A063; }
         .gold-text { color: #C9A063; }
-        .item-badge { background: rgba(201, 160, 99, 0.2); border: 1px solid #C9A063; }
+        .stat-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(201, 160, 99, 0.2); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4">
     <div id="game-container" class="max-w-2xl w-full mt-6 space-y-6">
         
-        <!-- CABECERA: ENIGMA + MOCHILA -->
+        <!-- CABECERA: ENIGMA + STATS -->
         <div class="flex justify-between items-center border-b gold-border pb-4">
-            <h1 class="text-3xl gold-text font-bold tracking-widest">ENIGMA</h1>
-            <div id="mochila" class="flex gap-2">
-                <span class="text-xs italic text-gray-500">Mochila vacía</span>
+            <div>
+                <h1 class="text-3xl gold-text font-bold tracking-widest">ENIGMA</h1>
+                <p id="valor-display" class="text-xs gold-text mt-1 uppercase tracking-tighter">Valor: ❤️❤️❤️</p>
             </div>
+            <div id="mochila" class="flex gap-2"></div>
         </div>
         
         <div id="pantalla-juego" class="space-y-6">
-            <div class="bg-gray-900/50 p-8 rounded-2xl border gold-border shadow-2xl">
+            <div class="bg-gray-900/50 p-8 rounded-2xl border gold-border shadow-2xl relative overflow-hidden">
+                <div id="efecto-daño" class="absolute inset-0 bg-red-900/20 hidden pointer-events-none"></div>
                 <h2 id="escena-titulo" class="text-2xl mb-4 gold-text font-bold"></h2>
                 <p id="escena-texto" class="text-xl leading-relaxed italic text-gray-300"></p>
             </div>
             <div id="opciones" class="grid grid-cols-1 gap-4"></div>
         </div>
+
+        <!-- BOTÓN REINICIAR (Solo aparece al morir) -->
+        <button id="btn-reiniciar" onclick="location.reload()" class="hidden w-full p-4 border border-red-600 text-red-500 rounded-xl font-bold hover:bg-red-900/20 transition">
+            Intentar de nuevo la aventura
+        </button>
     </div>
 
     <script>
-        // CONFIGURACIÓN CORREGIDA POR TU CTO
         const URL_PROYECTO = 'https://wsaxismjuiyvapdknjoi.supabase.co'; 
         const KEY_PROYECTO = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
-        
         const { createClient } = supabase;
         const clienteEnigma = createClient(URL_PROYECTO, KEY_PROYECTO);
 
-        // ESTADO DEL JUEGO: Inventario de Luz
-        let inventario = JSON.parse(localStorage.getItem('inventario_enigma')) || [];
+        // ESTADO GLOBAL
+        let valor = 3;
+        let inventario = [];
 
         async function cargarEscena(id) {
-            const { data: escena, error } = await clienteEnigma.from('escenas').select('*').eq('id', id).single();
+            const { data: escena } = await clienteEnigma.from('escenas').select('*').eq('id', id).single();
             const { data: decisiones } = await clienteEnigma.from('decisiones').select('*').eq('escena_origen_id', id);
 
-            if (error) return;
+            // LOGICA DE CONSECUENCIAS:
+            // Si la escena es la del rugido (ID 5), Luz pierde todo su valor
+            if (id === 5) { 
+                valor = 0;
+                actualizarStats();
+            }
 
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerText = escena.texto_narrativo;
@@ -57,48 +68,47 @@
             const contenedorOpciones = document.getElementById('opciones');
             contenedorOpciones.innerHTML = '';
 
+            if (valor <= 0) {
+                document.getElementById('escena-titulo').innerText = "FIN DE LA AVENTURA";
+                document.getElementById('btn-reiniciar').classList.remove('hidden');
+                return;
+            }
+
             decisiones.forEach(opcion => {
                 const boton = document.createElement('button');
-                boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text font-bold flex justify-between items-center";
+                boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text font-bold";
                 
-                // MECÁNICA DE BLOQUEO: Solo entrar con Ticket
+                // Bloqueo por ticket (como antes)
                 if (opcion.texto_boton.includes("entrar a la carpa") && !inventario.includes('Ticket Dorado')) {
-                    boton.innerHTML = `<span>🔒 ${opcion.texto_boton}</span> <span class="text-[10px] uppercase bg-red-900/50 px-2 py-1 rounded">Falta Ticket</span>`;
+                    boton.innerHTML = `🔒 ${opcion.texto_boton} (Necesitas Ticket)`;
                     boton.disabled = true;
                     boton.classList.add('opacity-50');
                 } else {
-                    boton.innerHTML = `<span>${opcion.texto_boton}</span>`;
+                    boton.innerText = opcion.texto_boton;
                     boton.onclick = () => {
-                        // MECÁNICA DE RECOGER: Si busca, encuentra el ticket
-                        if (opcion.texto_boton.includes("Buscar entre los arbustos")) {
-                            añadirObjeto('Ticket Dorado');
-                        }
+                        if (opcion.texto_boton.includes("Buscar entre los arbustos")) añadirObjeto('Ticket Dorado');
                         cargarEscena(opcion.escena_destino_id);
                     };
                 }
                 contenedorOpciones.appendChild(boton);
             });
-            actualizarMochila();
+        }
+
+        function actualizarStats() {
+            document.getElementById('valor-display').innerText = "Valor: " + "❤️".repeat(valor);
+            if (valor === 0) document.getElementById('valor-display').innerText = "Valor: 💀 DERROTADA";
         }
 
         function añadirObjeto(nombre) {
             if (!inventario.includes(nombre)) {
                 inventario.push(nombre);
-                localStorage.setItem('inventario_enigma', JSON.stringify(inventario));
                 actualizarMochila();
-                alert("¡Luz ha encontrado un " + nombre + "!");
             }
         }
 
         function actualizarMochila() {
             const divMochila = document.getElementById('mochila');
-            if (inventario.length === 0) {
-                divMochila.innerHTML = '<span class="text-xs italic text-gray-500">Mochila vacía</span>';
-                return;
-            }
-            divMochila.innerHTML = inventario.map(item => 
-                `<span class="px-3 py-1 item-badge rounded-full text-[10px] gold-text font-bold">🏷️ ${item}</span>`
-            ).join('');
+            divMochila.innerHTML = inventario.map(item => `<span class="px-2 py-1 stat-card rounded text-[10px] gold-text">🏷️ ${item}</span>`).join('');
         }
 
         window.onload = () => cargarEscena(1);
