@@ -15,41 +15,41 @@
         .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateY(-2px); }
         p { margin-bottom: 1.5rem; font-size: 1.3rem; text-align: justify; }
         .inventory-badge { background: linear-gradient(45deg, #2D1B06, #0B0E14); border: 1px solid #C9A063; font-size: 0.7rem; }
-        .btn-reiniciar { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; transition: all 0.3s; }
-        .btn-reiniciar:hover { color: #ef4444; border-color: #ef4444; }
+        .medal-card { background: rgba(201, 160, 99, 0.05); border: 1px solid rgba(201, 160, 99, 0.2); transition: all 0.5s; }
+        .animate-fade { animation: fadeIn 1.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
     
-    <!-- NAVEGACIÓN ACTUALIZADA CON BOTÓN REINICIAR -->
     <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/95 border-b border-gold/10">
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase tracking-[0.3em] gold-text font-bold">Mythos Engine v4.0</span>
+            <span class="text-[10px] uppercase tracking-[0.3em] gold-text font-bold">Mythos Engine v5.0</span>
             <div id="valor-hearts" class="flex gap-1 text-xl mt-1"></div>
         </div>
-        
         <div class="flex items-center gap-4">
-            <!-- AQUÍ ESTÁ EL BOTÓN NUEVO -->
-            <button onclick="reiniciarAventura()" class="btn-reiniciar">
-                Reiniciar
-            </button>
+            <button onclick="reiniciarAventura()" class="text-[10px] uppercase border border-gray-700 px-2 py-1 rounded text-gray-500 hover:text-red-500 hover:border-red-500 transition">Reiniciar</button>
             <div id="mochila" class="flex gap-2"></div>
         </div>
     </nav>
 
     <main class="max-w-3xl w-full p-6 pb-24">
-        <div id="pantalla-juego" class="space-y-8 animate-fade-in">
-           <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-500">
-                
-                <!-- CONTENEDOR DE IMAGEN -->
+        <div id="pantalla-juego" class="space-y-8 animate-fade">
+           <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-700">
                 <div id="contenedor-imagen" class="hidden mb-6 rounded-xl overflow-hidden border border-gold/10">
                     <img id="escena-imagen" src="" alt="Ilustración" class="w-full h-auto object-cover max-h-[400px]">
                 </div>
-
                 <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
                 <div id="escena-texto" class="text-gray-300"></div>
             </div>
             <div id="opciones" class="grid grid-cols-1 gap-4"></div>
+        </div>
+        
+        <!-- CONTENEDOR DE MEDALLAS (Oculto al principio) -->
+        <div id="pantalla-final" class="hidden animate-fade space-y-8 text-center">
+            <h2 class="text-4xl font-bold gold-text">¡Aventura Completada!</h2>
+            <div id="lista-medallas" class="flex flex-wrap justify-center gap-4"></div>
+            <button onclick="reiniciarAventura()" class="px-8 py-4 glass-panel rounded-full gold-text border-gold/50 hover:bg-gold/10 transition">Jugar de nuevo</button>
         </div>
     </main>
 
@@ -59,23 +59,15 @@
         const { createClient } = supabase;
         const enigma = createClient(URL_PROYECTO, KEY_PROYECTO);
 
-        // ESTADO GLOBAL PERSISTENTE
-        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { 
-            escenaActual: 1, 
-            valor: 3, 
-            inventario: [] 
-        };
+        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { escenaActual: 1, valor: 3, inventario: [] };
 
-        function guardarPartida() {
-            localStorage.setItem('enigma_save', JSON.stringify(estado));
-        }
+        function guardarPartida() { localStorage.setItem('enigma_save', JSON.stringify(estado)); }
 
-        // --- NUEVA FUNCIÓN PARA REINICIAR ---
         function reiniciarAventura() {
-            if (confirm("¿Quieres empezar de nuevo? Se borrará tu mochila y tu progreso.")) {
+            if (confirm("¿Empezar de nuevo?")) {
                 localStorage.removeItem('enigma_save');
                 estado = { escenaActual: 1, valor: 3, inventario: [] };
-                cargarEscena(1);
+                location.reload();
             }
         }
 
@@ -89,40 +81,28 @@
 
             if (!escena) return;
 
-            // --- LÓGICA DE IMÁGENES ---
+            // Gestión de Imagen
             const contenedorImagen = document.getElementById('contenedor-imagen');
             const imgElemento = document.getElementById('escena-imagen');
-            
-            if (escena.imagen_url && escena.imagen_url.trim() !== "") {
+            if (escena.imagen_url) {
                 imgElemento.src = escena.imagen_url;
                 contenedorImagen.classList.remove('hidden');
-            } else {
-                contenedorImagen.classList.add('hidden');
-            }
+            } else { contenedorImagen.classList.add('hidden'); }
 
-            // --- SISTEMA DE EMOCIONES ---
-            const contenedorPrincipal = document.getElementById('escena-container');
-            if (contenedorPrincipal) {
-                if (escena.titulo_escena.includes("Ira")) {
-                    contenedorPrincipal.style.borderColor = "#ef4444"; 
-                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
-                } else if (escena.titulo_escena.includes("Tristeza")) {
-                    contenedorPrincipal.style.borderColor = "#3b82f6"; 
-                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.2)";
-                } else if (escena.titulo_escena.includes("Miedo")) {
-                    contenedorPrincipal.style.borderColor = "#6b7280"; 
-                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(107, 114, 128, 0.2)";
-                } else {
-                    contenedorPrincipal.style.borderColor = "rgba(201, 160, 99, 0.2)"; 
-                    contenedorPrincipal.style.boxShadow = "none";
-                }
-            }
+            // Gestión de Emociones
+            const cont = document.getElementById('escena-container');
+            cont.style.borderColor = escena.titulo_escena.includes("Ira") ? "#ef4444" : escena.titulo_escena.includes("Tristeza") ? "#3b82f6" : escena.titulo_escena.includes("Miedo") ? "#6b7280" : "rgba(201, 160, 99, 0.2)";
 
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
 
-            const contenedor = document.getElementById('opciones');
-            contenedor.innerHTML = '';
+            const contenedorOpciones = document.getElementById('opciones');
+            contenedorOpciones.innerHTML = '';
+
+            // Detectar si es escena final (ID 55 o 56)
+            if (id === 55 || id === 56) {
+                setTimeout(mostrarFinal, 3000);
+            }
 
             decisiones.forEach(opc => {
                 const b = document.createElement('button');
@@ -132,35 +112,19 @@
                 const tieneTicket = estado.inventario.includes("Ticket Dorado");
 
                 if (necesitaTicket && !tieneTicket) {
-                    b.innerHTML = `<span class="opacity-40 italic">🔒 ${opc.texto_boton}</span> <span class="text-[10px] gold-text">Falta Ticket</span>`;
+                    b.innerHTML = `<span class="opacity-40 italic">🔒 ${opc.texto_boton}</span>`;
                     b.disabled = true;
                 } else {
-                    b.innerHTML = `<span class="font-bold text-lg">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
+                    b.innerHTML = `<span class="font-bold">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
                     b.onclick = () => {
                         if (opc.texto_boton.includes("Buscar entre los arbustos")) recolectar("Ticket Dorado");
                         cargarEscena(opc.escena_destino_id);
                     };
                 }
-                contenedor.appendChild(b);
+                contenedorOpciones.appendChild(b);
             });
             actualizarUI();
         }
 
         function recolectar(item) {
-            if (!estado.inventario.includes(item)) {
-                estado.inventario.push(item);
-                guardarPartida();
-                actualizarUI();
-            }
-        }
-
-        function actualizarUI() {
-            document.getElementById('valor-hearts').innerText = "❤️".repeat(estado.valor);
-            const mochila = document.getElementById('mochila');
-            mochila.innerHTML = estado.inventario.map(i => `<span class="px-3 py-1 inventory-badge rounded-full gold-text font-bold">🏷️ ${i}</span>`).join('');
-        }
-
-        window.onload = () => cargarEscena(estado.escenaActual);
-    </script>
-</body>
-</html>
+            if (!e
