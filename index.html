@@ -28,7 +28,7 @@
 
     <main class="max-w-3xl w-full p-6 pb-24">
         <div id="pantalla-juego" class="space-y-8 animate-fade-in">
-            <div class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl">
+           <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-500">
                 <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
                 <div id="escena-texto" class="text-gray-300"></div>
             </div>
@@ -53,7 +53,7 @@
             localStorage.setItem('enigma_save', JSON.stringify(estado));
         }
 
-        async function cargarEscena(id) {
+async function cargarEscena(id) {
             estado.escenaActual = id;
             guardarPartida();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -62,6 +62,25 @@
             const { data: decisiones } = await enigma.from('decisiones').select('*').eq('escena_origen_id', id);
 
             if (!escena) return;
+
+            // --- NUEVO: SISTEMA DE EMOCIONES (Cambio de color visual) ---
+            const contenedorPrincipal = document.getElementById('escena-container');
+            if (contenedorPrincipal) {
+                if (escena.titulo_escena.includes("Ira")) {
+                    contenedorPrincipal.style.borderColor = "#ef4444"; // Rojo vibrante
+                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(239, 68, 68, 0.2)";
+                } else if (escena.titulo_escena.includes("Tristeza")) {
+                    contenedorPrincipal.style.borderColor = "#3b82f6"; // Azul profundo
+                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(59, 130, 246, 0.2)";
+                } else if (escena.titulo_escena.includes("Miedo")) {
+                    contenedorPrincipal.style.borderColor = "#6b7280"; // Gris sombra
+                    contenedorPrincipal.style.boxShadow = "0 0 20px rgba(107, 114, 128, 0.2)";
+                } else {
+                    contenedorPrincipal.style.borderColor = "rgba(201, 160, 99, 0.2)"; // Oro original
+                    contenedorPrincipal.style.boxShadow = "none";
+                }
+            }
+            // ------------------------------------------------------------
 
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
@@ -73,7 +92,6 @@
                 const b = document.createElement('button');
                 b.className = "w-full p-5 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
                 
-                // LÓGICA DE OBJETOS: "Ticket Dorado"
                 const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa");
                 const tieneTicket = estado.inventario.includes("Ticket Dorado");
 
