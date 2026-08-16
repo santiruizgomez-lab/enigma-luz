@@ -129,28 +129,32 @@
 
             if (id === 55 || id === 56) { setTimeout(mostrarFinal, 3000); return; }
 
-            decisiones.forEach(opc => {
+           decisiones.forEach(opc => {
                 const b = document.createElement('button');
                 b.className = "w-full p-6 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
                 
-                // LÓGICA DE OBJETOS
-                const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa") && !estado.inventario.includes("Ticket Dorado");
-
-                if (necesitaTicket) {
-                    b.innerHTML = `<span class="opacity-30 italic">🔒 ${opc.texto_boton}</span>`;
-                    b.disabled = true;
-                } else {
-                    b.innerHTML = `<span class="font-bold text-lg">${opc.texto_boton}</span> <span class="gold-text transition">→</span>`;
+                // --- MECÁNICA DE ENIGMA: Bloqueo por código numérico ---
+                if (opc.texto_boton.includes("[CÓDIGO]")) {
                     b.onclick = () => {
-                        if (opc.texto_boton.includes("Buscar entre los arbustos")) recolectar("Ticket Dorado");
-                        if (opc.texto_boton.includes("Cinta de la Familia")) recolectar("Cinta de la Familia");
+                        const input = prompt("Introduce el código de 3 dígitos que anotaste en tu diario:");
+                        if (input === "7") { // El código de los leones
+                            cargarEscena(opc.escena_destino_id);
+                        } else {
+                            alert("Código incorrecto. Luz siente que algo no encaja en su memoria...");
+                            estado.valor -= 1;
+                            actualizarUI();
+                        }
+                    };
+                } else {
+                    // Lógica normal de botones
+                    b.onclick = () => {
+                        if (opc.texto_boton.includes("Ticket Dorado")) recolectar("Ticket Dorado");
                         cargarEscena(opc.escena_destino_id);
                     };
                 }
+                b.innerHTML = `<span class="font-bold text-lg">${opc.texto_boton}</span> <span>→</span>`;
                 contenedorOpciones.appendChild(b);
             });
-            actualizarUI();
-        }
 
         function recolectar(item) {
             if (!estado.inventario.includes(item)) {
