@@ -2,110 +2,128 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ENIGMA ENGINE v7.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENIGMA - Legado Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #0B0E14; color: #E5E7EB; font-family: serif; }
+        body { background: #0B0E14; color: #E5E7EB; font-family: 'Crimson Pro', serif; }
         .gold { color: #C9A063; }
-        .panel { background: rgba(31, 41, 55, 0.5); border: 1px solid #C9A063; border-radius: 20px; padding: 2rem; }
-        .btn { width: 100%; padding: 1rem; margin-top: 1rem; border: 1px solid #C9A063; border-radius: 10px; text-align: left; transition: 0.3s; }
-        .btn:hover { background: rgba(201, 160, 99, 0.1); }
-        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .panel { background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(201, 160, 99, 0.3); border-radius: 24px; backdrop-filter: blur(10px); }
+        .btn { width: 100%; padding: 1.2rem; margin-top: 1rem; border: 1px solid rgba(201, 160, 99, 0.4); border-radius: 15px; text-align: left; transition: 0.3s; background: rgba(255,255,255,0.02); }
+        .btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateX(5px); }
+        .btn:disabled { opacity: 0.3; }
     </style>
 </head>
-<body class="p-4 flex flex-col items-center">
-    <nav class="w-full max-w-2xl flex justify-between py-4 border-b border-gray-800 mb-8">
-        <h1 class="text-2xl gold font-bold">ENIGMA</h1>
-        <button onclick="reiniciar()" class="text-xs gray-500 uppercase">Reset</button>
+<body class="p-4 flex flex-col items-center min-h-screen">
+    <nav class="w-full max-w-2xl flex justify-between py-6 border-b border-gray-800 mb-8">
+        <h1 class="text-3xl gold font-bold italic tracking-tighter">ENIGMA</h1>
+        <button onclick="borrarYReiniciar()" class="text-[10px] text-gray-500 uppercase tracking-widest border border-gray-800 px-3 py-1 rounded hover:text-red-500">Reset Total</button>
     </nav>
 
     <main class="w-full max-w-2xl">
-        <div id="status" class="text-[10px] gold uppercase mb-4">Cargando motor...</div>
+        <div id="status" class="text-[10px] gold uppercase mb-4 tracking-widest">Iniciando sistema...</div>
         
-        <div id="game-card" class="panel">
-            <div id="img-cont" class="hidden mb-4 rounded-lg overflow-hidden">
-                <img id="sc-img" src="" class="w-full h-48 object-cover">
+        <div id="game-card" class="panel p-8 shadow-2xl">
+            <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-gold/10">
+                <img id="sc-img" src="" class="w-full h-64 object-cover">
             </div>
-            <h2 id="sc-titulo" class="text-2xl font-bold gold mb-4 text-center">Iniciando...</h2>
-            <p id="sc-texto" class="text-lg italic mb-6"></p>
-            <div id="sc-opciones"></div>
+            <h2 id="sc-titulo" class="text-3xl font-bold gold mb-4">Cargando...</h2>
+            <p id="sc-texto" class="text-xl leading-relaxed italic text-gray-300 mb-8"></p>
+            <div id="sc-opciones" class="space-y-3"></div>
         </div>
 
-        <div id="error-log" class="hidden mt-8 p-4 bg-red-900/20 border border-red-500 text-red-500 text-xs rounded-lg">
-            <strong>Error Detectado:</strong> <span id="error-msg"></span>
+        <div id="debug-error" class="hidden mt-8 p-6 bg-red-900/10 border border-red-500/50 text-red-500 rounded-2xl">
+            <h3 class="font-bold mb-2">Error de Conexión:</h3>
+            <p id="error-msg" class="text-sm font-mono"></p>
         </div>
     </main>
 
     <script>
-        const URL = 'https://wsaxismjuiyvapdknjoi.supabase.co';
-        const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
-        
+        // DATOS PROPORCIONADOS POR EL SOCIO (Limpiados automáticamente por el código)
+        const URL_BRUTA = 'https://wsaxismjuiyvapdknjoi.supabase.co/rest/v1/';
+        const KEY_BRUTA = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
+
+        // LIMPIEZA QUIRÚRGICA DE URL
+        const URL_LIMPIA = URL_BRUTA.replace(/\/rest\/v1\/?$/, '').trim();
+        const KEY_LIMPIA = KEY_BRUTA.trim();
+
         let sb;
-        let save = JSON.parse(localStorage.getItem('enigma_save')) || { id: 1, items: [] };
+        let partida = JSON.parse(localStorage.getItem('enigma_save')) || { id: 1, mochila: [] };
 
         window.onload = async () => {
             try {
-                sb = supabase.createClient(URL, KEY);
-                await cargar(save.id);
+                if (typeof supabase === 'undefined') throw new Error("La librería Supabase no ha cargado.");
+                
+                sb = supabase.createClient(URL_LIMPIA, KEY_LIMPIA);
+                await cargarEscena(partida.id);
             } catch (e) {
-                panic(e.message);
+                mostrarError(e.message);
             }
         };
 
-        async function cargar(id) {
-            document.getElementById('status').innerText = "Conectando con Supabase...";
+        async function cargarEscena(id) {
+            document.getElementById('status').innerText = "Buscando escena " + id + "...";
             
             const { data: esc, error: err1 } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs, error: err2 } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
-            if (err1 || !esc) return panic("No encuentro la escena " + id + ". Pulsa Reset.");
+            if (err1 || !esc) {
+                return mostrarError("No se encuentra la escena con ID: " + id + ". Posiblemente las tablas de Supabase están vacías.");
+            }
 
-            // UI
+            // Actualizar Interfaz
             document.getElementById('sc-titulo').innerText = esc.titulo_escena;
             document.getElementById('sc-texto').innerText = esc.texto_narrativo;
             
+            const imgCont = document.getElementById('img-cont');
             if (esc.imagen_url) {
                 document.getElementById('sc-img').src = esc.imagen_url;
-                document.getElementById('img-cont').classList.remove('hidden');
+                imgCont.classList.remove('hidden');
             } else {
-                document.getElementById('img-cont').classList.add('hidden');
+                imgCont.classList.add('hidden');
             }
 
-            const optDiv = document.getElementById('sc-opciones');
-            optDiv.innerHTML = '';
+            const divOpciones = document.getElementById('sc-opciones');
+            divOpciones.innerHTML = '';
 
             if (decs) {
                 decs.forEach(d => {
                     const b = document.createElement('button');
                     b.className = "btn";
-                    const bloqueado = d.item_requerido && !save.items.includes(d.item_requerido);
                     
-                    b.innerHTML = bloqueado ? `🔒 ${d.texto_boton} (Falta ${d.item_requerido})` : d.texto_boton;
+                    const bloqueado = d.item_requerido && !partida.mochila.includes(d.item_requerido);
+                    
+                    b.innerHTML = bloqueado 
+                        ? `<span class="opacity-40">🔒 ${d.texto_boton}</span> <span class="float-right text-[10px] gold uppercase pt-1">Necesitas ${d.item_requerido}</span>` 
+                        : `<span>${d.texto_boton}</span> <span class="float-right gold">→</span>`;
+                    
                     b.disabled = bloqueado;
                     
                     b.onclick = () => {
-                        if (d.item_entregado && !save.items.includes(d.item_entregado)) {
-                            save.items.push(d.item_entregado);
+                        if (d.item_entregado && !partida.mochila.includes(d.item_entregado)) {
+                            partida.mochila.push(d.item_entregado);
                         }
-                        save.id = d.escena_destino_id;
-                        localStorage.setItem('enigma_save', JSON.stringify(save));
-                        cargar(d.escena_destino_id);
+                        partida.id = d.escena_destino_id;
+                        localStorage.setItem('enigma_save', JSON.stringify(partida));
+                        cargarEscena(d.escena_destino_id);
                     };
-                    optDiv.appendChild(b);
+                    divOpciones.appendChild(b);
                 });
             }
             
-            document.getElementById('status').innerText = "Mochila: " + (save.items.join(', ') || "Vacía");
+            document.getElementById('status').innerText = "Mochila: " + (partida.mochila.join(', ') || "Vacía");
         }
 
-        function panic(m) {
-            document.getElementById('error-log').classList.remove('hidden');
-            document.getElementById('error-msg').innerText = m;
-            document.getElementById('status').innerText = "ERROR";
+        function mostrarError(msg) {
+            document.getElementById('debug-error').classList.remove('hidden');
+            document.getElementById('error-msg').innerText = msg;
+            document.getElementById('status').innerText = "ERROR DE SISTEMA";
+            document.getElementById('sc-titulo').innerText = "Error Crítico";
         }
 
-        function reiniciar() {
+        function borrarYReiniciar() {
             localStorage.removeItem('enigma_save');
             location.reload();
         }
