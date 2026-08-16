@@ -3,55 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENIGMA - Luz y el Circo</title>
+    <title>ENIGMA - Luz y el Grimorio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #E5E7EB; line-height: 1.8; }
         .gold-text { color: #C9A063; }
-        .glass-panel { background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(201, 160, 99, 0.2); }
-        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.3); transition: all 0.3s ease; background: rgba(255,255,255,0.03); }
-        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateY(-2px); }
-        p { margin-bottom: 1.5rem; font-size: 1.3rem; text-align: justify; }
-        .inventory-badge { background: linear-gradient(45deg, #2D1B06, #0B0E14); border: 1px solid #C9A063; font-size: 0.7rem; }
-        .medal-card { background: rgba(201, 160, 99, 0.05); border: 1px solid rgba(201, 160, 99, 0.2); transition: all 0.5s; }
-        .animate-fade { animation: fadeIn 1.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .glass-panel { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(15px); border: 1px solid rgba(201, 160, 99, 0.3); }
+        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.3); transition: all 0.3s; background: rgba(255,255,255,0.02); }
+        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateX(8px); }
+        .notepad-input { background: #1a1c23; border: 1px border-gold/20; color: #d1d5db; scrollbar-width: thin; }
+        .inventory-slot { background: rgba(201, 160, 99, 0.1); border: 1px solid rgba(201, 160, 99, 0.4); }
+        p { margin-bottom: 1.5rem; font-size: 1.25rem; text-align: justify; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .sidebar { animation: slideIn 0.5s ease-out; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
     
-    <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/95 border-b border-gold/10">
+    <!-- HEADER -->
+    <nav class="w-full max-w-4xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/95 border-b border-gold/20">
         <div class="flex flex-col">
-            <span class="text-[10px] uppercase tracking-[0.3em] gold-text font-bold">Mythos Engine v5.0</span>
+            <h1 class="text-2xl gold-text font-bold tracking-tighter italic">ENIGMA</h1>
             <div id="valor-hearts" class="flex gap-1 text-xl mt-1"></div>
         </div>
-        <div class="flex items-center gap-4">
-            <button onclick="reiniciarAventura()" class="text-[10px] uppercase border border-gray-700 px-2 py-1 rounded text-gray-500 hover:text-red-500 hover:border-red-500 transition">Reiniciar</button>
-            <div id="mochila" class="flex gap-2"></div>
+        
+        <div class="flex items-center gap-3">
+            <button onclick="toggleNotepad()" class="p-2 glass-panel rounded-lg hover:border-gold transition">📔 <span class="text-[10px] uppercase ml-1">Notas</span></button>
+            <button onclick="reiniciarAventura()" class="text-[10px] uppercase border border-gray-700 px-3 py-2 rounded text-gray-500 hover:text-red-500 transition">Reiniciar</button>
         </div>
     </nav>
 
-    <main class="max-w-3xl w-full p-6 pb-24">
-        <div id="pantalla-juego" class="space-y-8 animate-fade">
+    <!-- UI PRINCIPAL -->
+    <main class="max-w-4xl w-full p-6 flex flex-col md:flex-row gap-8">
+        <div id="pantalla-juego" class="flex-1 space-y-8">
            <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-700">
-                <div id="contenedor-imagen" class="hidden mb-6 rounded-xl overflow-hidden border border-gold/10">
-                    <img id="escena-imagen" src="" alt="Ilustración" class="w-full h-auto object-cover max-h-[400px]">
+                <div id="contenedor-imagen" class="hidden mb-8 rounded-2xl overflow-hidden border border-gold/10 shadow-2xl">
+                    <img id="escena-imagen" src="" alt="Escena" class="w-full h-auto object-cover max-h-[450px]">
                 </div>
-                <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
+                <h2 id="escena-titulo" class="text-3xl md:text-5xl font-bold gold-text mb-8 tracking-tight"></h2>
                 <div id="escena-texto" class="text-gray-300"></div>
             </div>
             <div id="opciones" class="grid grid-cols-1 gap-4"></div>
         </div>
-        
-        <!-- CONTENEDOR DE MEDALLAS (Oculto al principio) -->
-        <div id="pantalla-final" class="hidden animate-fade space-y-8 text-center">
-            <h2 class="text-4xl font-bold gold-text">¡Aventura Completada!</h2>
-            <div id="lista-medallas" class="flex flex-wrap justify-center gap-4"></div>
-            <button onclick="reiniciarAventura()" class="px-8 py-4 glass-panel rounded-full gold-text border-gold/50 hover:bg-gold/10 transition">Jugar de nuevo</button>
-        </div>
+
+        <!-- MOCHILA LATERAL -->
+        <aside class="w-full md:w-48 space-y-4">
+            <h3 class="text-xs uppercase tracking-widest gold-text font-bold">Mochila</h3>
+            <div id="mochila" class="flex flex-col gap-2"></div>
+        </aside>
     </main>
+
+    <!-- BLOC DE NOTAS (MODAL LATERAL) -->
+    <div id="notepad-sidebar" class="hidden fixed right-0 top-0 h-full w-80 sidebar z-[100] glass-panel p-6 shadow-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="gold-text font-bold uppercase tracking-widest">Diario de Luz</h3>
+            <button onclick="toggleNotepad()" class="text-gray-500 hover:text-white">✕</button>
+        </div>
+        <textarea id="notepad-text" oninput="saveNotes()" class="w-full h-[80%] notepad-input p-4 rounded-xl resize-none focus:outline-none focus:border-gold" placeholder="Escribe aquí las pistas que encuentres..."></textarea>
+        <p class="text-[10px] text-gray-600 mt-4 italic text-center">Tus notas se guardan automáticamente.</p>
+    </div>
+
+    <!-- PANTALLA FINAL -->
+    <div id="pantalla-final" class="hidden fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-8 text-center space-y-8">
+        <h2 class="text-5xl font-bold gold-text animate-pulse">¡Aventura Completada!</h2>
+        <div id="lista-medallas" class="flex flex-wrap justify-center gap-6"></div>
+        <button onclick="reiniciarAventura()" class="px-12 py-5 glass-panel rounded-full gold-text border-gold/50 hover:bg-gold/20 transition text-xl">Comenzar un nuevo sueño</button>
+    </div>
 
     <script>
         const URL_PROYECTO = 'https://wsaxismjuiyvapdknjoi.supabase.co'; 
@@ -59,14 +78,25 @@
         const { createClient } = supabase;
         const enigma = createClient(URL_PROYECTO, KEY_PROYECTO);
 
-        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { escenaActual: 1, valor: 3, inventario: [] };
+        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { escenaActual: 1, valor: 3, inventario: [], notas: "" };
 
         function guardarPartida() { localStorage.setItem('enigma_save', JSON.stringify(estado)); }
 
+        // --- BLOC DE NOTAS ---
+        function toggleNotepad() {
+            const pad = document.getElementById('notepad-sidebar');
+            pad.classList.toggle('hidden');
+            document.getElementById('notepad-text').value = estado.notas;
+        }
+
+        function saveNotes() {
+            estado.notas = document.getElementById('notepad-text').value;
+            guardarPartida();
+        }
+
         function reiniciarAventura() {
-            if (confirm("¿Empezar de nuevo?")) {
+            if (confirm("¿Reiniciar todo? Perderás tus notas e inventario.")) {
                 localStorage.removeItem('enigma_save');
-                estado = { escenaActual: 1, valor: 3, inventario: [] };
                 location.reload();
             }
         }
@@ -81,17 +111,15 @@
 
             if (!escena) return;
 
-            // Gestión de Imagen
-            const contenedorImagen = document.getElementById('contenedor-imagen');
-            const imgElemento = document.getElementById('escena-imagen');
-            if (escena.imagen_url) {
-                imgElemento.src = escena.imagen_url;
-                contenedorImagen.classList.remove('hidden');
-            } else { contenedorImagen.classList.add('hidden'); }
+            // Imagen
+            const cImg = document.getElementById('contenedor-imagen');
+            const img = document.getElementById('escena-imagen');
+            if (escena.imagen_url) { img.src = escena.imagen_url; cImg.classList.remove('hidden'); }
+            else { cImg.classList.add('hidden'); }
 
-            // Gestión de Emociones
+            // Emociones
             const cont = document.getElementById('escena-container');
-            cont.style.borderColor = escena.titulo_escena.includes("Ira") ? "#ef4444" : escena.titulo_escena.includes("Tristeza") ? "#3b82f6" : escena.titulo_escena.includes("Miedo") ? "#6b7280" : "rgba(201, 160, 99, 0.2)";
+            cont.style.borderColor = escena.titulo_escena.includes("Ira") ? "#ef4444" : escena.titulo_escena.includes("Tristeza") ? "#3b82f6" : escena.titulo_escena.includes("Miedo") ? "#6b7280" : "rgba(201, 160, 99, 0.3)";
 
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
@@ -99,25 +127,23 @@
             const contenedorOpciones = document.getElementById('opciones');
             contenedorOpciones.innerHTML = '';
 
-            // Detectar si es escena final (ID 55 o 56)
-            if (id === 55 || id === 56) {
-                setTimeout(mostrarFinal, 3000);
-            }
+            if (id === 55 || id === 56) { setTimeout(mostrarFinal, 3000); return; }
 
             decisiones.forEach(opc => {
                 const b = document.createElement('button');
-                b.className = "w-full p-5 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
+                b.className = "w-full p-6 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
                 
-                const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa");
-                const tieneTicket = estado.inventario.includes("Ticket Dorado");
+                // LÓGICA DE OBJETOS
+                const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa") && !estado.inventario.includes("Ticket Dorado");
 
-                if (necesitaTicket && !tieneTicket) {
-                    b.innerHTML = `<span class="opacity-40 italic">🔒 ${opc.texto_boton}</span>`;
+                if (necesitaTicket) {
+                    b.innerHTML = `<span class="opacity-30 italic">🔒 ${opc.texto_boton}</span>`;
                     b.disabled = true;
                 } else {
-                    b.innerHTML = `<span class="font-bold">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
+                    b.innerHTML = `<span class="font-bold text-lg">${opc.texto_boton}</span> <span class="gold-text transition">→</span>`;
                     b.onclick = () => {
                         if (opc.texto_boton.includes("Buscar entre los arbustos")) recolectar("Ticket Dorado");
+                        if (opc.texto_boton.includes("Cinta de la Familia")) recolectar("Cinta de la Familia");
                         cargarEscena(opc.escena_destino_id);
                     };
                 }
@@ -127,4 +153,44 @@
         }
 
         function recolectar(item) {
-            if (!e
+            if (!estado.inventario.includes(item)) {
+                estado.inventario.push(item);
+                guardarPartida();
+                actualizarUI();
+            }
+        }
+
+        function actualizarUI() {
+            document.getElementById('valor-hearts').innerText = "❤️".repeat(estado.valor);
+            const m = document.getElementById('mochila');
+            m.innerHTML = estado.inventario.map(i => `<div class="inventory-slot p-2 rounded-xl text-[10px] gold-text font-bold text-center uppercase tracking-tighter">🏷️ ${i}</div>`).join('');
+            if(estado.inventario.length === 0) m.innerHTML = '<span class="text-[10px] text-gray-600 italic">Vacía</span>';
+        }
+
+        function mostrarFinal() {
+            document.getElementById('pantalla-final').classList.remove('hidden');
+            const lista = document.getElementById('lista-medallas');
+            lista.innerHTML = '';
+            const logros = [
+                { c: estado.valor === 3, i: '🏅', t: 'Perfecta', d: 'Salud intacta' },
+                { c: estado.inventario.length >= 2, i: '🎒', t: 'Coleccionista', d: 'Mochila llena' },
+                { c: true, i: '🎪', t: 'Estrella', d: 'Sueño cumplido' }
+            ];
+            logros.forEach(l => {
+                if (l.c) {
+                    lista.innerHTML += `<div class="medal-card p-6 rounded-3xl w-40 flex flex-col items-center">
+                        <span class="text-5xl mb-2">${l.i}</span>
+                        <span class="text-xs gold-text font-bold uppercase tracking-widest">${l.t}</span>
+                        <span class="text-[10px] text-gray-500 mt-1 italic">${l.d}</span>
+                    </div>`;
+                }
+            });
+        }
+
+        window.onload = () => {
+            document.getElementById('notepad-text').value = estado.notas;
+            cargarEscena(estado.escenaActual);
+        };
+    </script>
+</body>
+</html>
