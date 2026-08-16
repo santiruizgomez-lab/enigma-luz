@@ -3,39 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENIGMA - Narrativa Profunda</title>
+    <title>ENIGMA - Luz y el Circo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #E5E7EB; line-height: 1.8; }
         .gold-text { color: #C9A063; }
-        .glass-panel { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(201, 160, 99, 0.2); }
-        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.4); transition: all 0.3s ease; }
-        .choice-btn:hover { background: rgba(201, 160, 99, 0.1); border-color: #C9A063; transform: translateX(5px); }
-        p { margin-bottom: 1.5rem; font-size: 1.25rem; }
+        .glass-panel { background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(201, 160, 99, 0.2); }
+        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.3); transition: all 0.3s ease; background: rgba(255,255,255,0.03); }
+        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateY(-2px); }
+        p { margin-bottom: 1.5rem; font-size: 1.3rem; text-align: justify; }
+        .inventory-badge { background: linear-gradient(45deg, #2D1B06, #0B0E14); border: 1px solid #C9A063; font-size: 0.7rem; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
-    <!-- BARRA DE PROGRESO Y STATS -->
-    <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/90">
+    <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/95 border-b border-gold/10">
         <div class="flex flex-col">
-            <span class="text-xs uppercase tracking-widest gold-text font-bold">Aventura: Luz y el Circo</span>
-            <div id="valor-hearts" class="flex gap-1 text-xl"></div>
+            <span class="text-[10px] uppercase tracking-[0.3em] gold-text font-bold">Mythos Engine v4.0</span>
+            <div id="valor-hearts" class="flex gap-1 text-xl mt-1"></div>
         </div>
         <div id="mochila" class="flex gap-2"></div>
     </nav>
 
-    <main id="game-container" class="max-w-3xl w-full p-6 pb-24">
-        <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-3xl shadow-2xl mb-8">
-            <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 border-b border-gold/20 pb-4"></h2>
-            <div id="escena-texto" class="space-y-4 italic text-gray-200">
-                <!-- El texto largo de la IA aparecerá aquí -->
+    <main class="max-w-3xl w-full p-6 pb-24">
+        <div id="pantalla-juego" class="space-y-8 animate-fade-in">
+            <div class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl">
+                <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
+                <div id="escena-texto" class="text-gray-300"></div>
             </div>
-        </div>
-
-        <div id="opciones" class="space-y-4">
-            <!-- Múltiples decisiones aquí -->
+            <div id="opciones" class="grid grid-cols-1 gap-4"></div>
         </div>
     </main>
 
@@ -45,9 +42,20 @@
         const { createClient } = supabase;
         const enigma = createClient(URL_PROYECTO, KEY_PROYECTO);
 
-        let estado = { valor: 3, inventario: [] };
+        // ESTADO GLOBAL PERSISTENTE
+        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { 
+            escenaActual: 1, 
+            valor: 3, 
+            inventario: [] 
+        };
+
+        function guardarPartida() {
+            localStorage.setItem('enigma_save', JSON.stringify(estado));
+        }
 
         async function cargarEscena(id) {
+            estado.escenaActual = id;
+            guardarPartida();
             window.scrollTo({ top: 0, behavior: 'smooth' });
             
             const { data: escena } = await enigma.from('escenas').select('*').eq('id', id).single();
@@ -55,33 +63,51 @@
 
             if (!escena) return;
 
-            // Renderizar texto con saltos de línea (párrafos)
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
-            const textoHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
-            document.getElementById('escena-texto').innerHTML = textoHTML;
+            document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
 
             const contenedor = document.getElementById('opciones');
             contenedor.innerHTML = '';
 
             decisiones.forEach(opc => {
                 const b = document.createElement('button');
-                b.className = "w-full p-6 glass-panel rounded-2xl text-left choice-btn flex items-center gap-4 group";
-                b.innerHTML = `
-                    <div class="w-2 h-2 rounded-full bg-[#C9A063] group-hover:scale-150 transition"></div>
-                    <span class="text-lg font-bold">${opc.texto_boton}</span>
-                `;
-                b.onclick = () => cargarEscena(opc.escena_destino_id);
+                b.className = "w-full p-5 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
+                
+                // LÓGICA DE OBJETOS: "Ticket Dorado"
+                const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa");
+                const tieneTicket = estado.inventario.includes("Ticket Dorado");
+
+                if (necesitaTicket && !tieneTicket) {
+                    b.innerHTML = `<span class="opacity-40 italic">🔒 ${opc.texto_boton}</span> <span class="text-[10px] gold-text">Falta Ticket</span>`;
+                    b.disabled = true;
+                } else {
+                    b.innerHTML = `<span class="font-bold">${opc.texto_boton}</span> <span class="gold-text opacity-0 group-hover:opacity-100 transition">→</span>`;
+                    b.onclick = () => {
+                        if (opc.texto_boton.includes("Buscar entre los arbustos")) recolectar("Ticket Dorado");
+                        cargarEscena(opc.escena_destino_id);
+                    };
+                }
                 contenedor.appendChild(b);
             });
-
-            actualizarInterfaz();
+            actualizarUI();
         }
 
-        function actualizarInterfaz() {
+        function recolectar(item) {
+            if (!estado.inventario.includes(item)) {
+                estado.inventario.push(item);
+                guardarPartida();
+                actualizarUI();
+                alert("¡Luz ha guardado: " + item + "!");
+            }
+        }
+
+        function actualizarUI() {
             document.getElementById('valor-hearts').innerText = "❤️".repeat(estado.valor);
+            const mochila = document.getElementById('mochila');
+            mochila.innerHTML = estado.inventario.map(i => `<span class="px-3 py-1 inventory-badge rounded-full gold-text font-bold">🏷️ ${i}</span>`).join('');
         }
 
-        window.onload = () => cargarEscena(1);
+        window.onload = () => cargarEscena(estado.escenaActual);
     </script>
 </body>
 </html>
