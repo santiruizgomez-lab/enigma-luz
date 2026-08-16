@@ -15,24 +15,37 @@
         .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateY(-2px); }
         p { margin-bottom: 1.5rem; font-size: 1.3rem; text-align: justify; }
         .inventory-badge { background: linear-gradient(45deg, #2D1B06, #0B0E14); border: 1px solid #C9A063; font-size: 0.7rem; }
+        .btn-reiniciar { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; border: 1px solid #374151; padding: 4px 8px; border-radius: 4px; transition: all 0.3s; }
+        .btn-reiniciar:hover { color: #ef4444; border-color: #ef4444; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center">
+    
+    <!-- NAVEGACIÓN ACTUALIZADA CON BOTÓN REINICIAR -->
     <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/95 border-b border-gold/10">
         <div class="flex flex-col">
             <span class="text-[10px] uppercase tracking-[0.3em] gold-text font-bold">Mythos Engine v4.0</span>
             <div id="valor-hearts" class="flex gap-1 text-xl mt-1"></div>
         </div>
-        <div id="mochila" class="flex gap-2"></div>
+        
+        <div class="flex items-center gap-4">
+            <!-- AQUÍ ESTÁ EL BOTÓN NUEVO -->
+            <button onclick="reiniciarAventura()" class="btn-reiniciar">
+                Reiniciar
+            </button>
+            <div id="mochila" class="flex gap-2"></div>
+        </div>
     </nav>
 
     <main class="max-w-3xl w-full p-6 pb-24">
         <div id="pantalla-juego" class="space-y-8 animate-fade-in">
            <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-[2rem] shadow-2xl transition-all duration-500">
-               <!-- Pon esto justo encima del <h2> de escena-titulo -->
-<div id="contenedor-imagen" class="hidden mb-6 rounded-xl overflow-hidden border border-gold/10">
-    <img id="escena-imagen" src="" alt="Ilustración" class="w-full h-auto object-cover max-h-[400px]">
-</div>
+                
+                <!-- CONTENEDOR DE IMAGEN -->
+                <div id="contenedor-imagen" class="hidden mb-6 rounded-xl overflow-hidden border border-gold/10">
+                    <img id="escena-imagen" src="" alt="Ilustración" class="w-full h-auto object-cover max-h-[400px]">
+                </div>
+
                 <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 tracking-tight"></h2>
                 <div id="escena-texto" class="text-gray-300"></div>
             </div>
@@ -57,7 +70,16 @@
             localStorage.setItem('enigma_save', JSON.stringify(estado));
         }
 
-async function cargarEscena(id) {
+        // --- NUEVA FUNCIÓN PARA REINICIAR ---
+        function reiniciarAventura() {
+            if (confirm("¿Quieres empezar de nuevo? Se borrará tu mochila y tu progreso.")) {
+                localStorage.removeItem('enigma_save');
+                estado = { escenaActual: 1, valor: 3, inventario: [] };
+                cargarEscena(1);
+            }
+        }
+
+        async function cargarEscena(id) {
             estado.escenaActual = id;
             guardarPartida();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -67,7 +89,7 @@ async function cargarEscena(id) {
 
             if (!escena) return;
 
-            // --- 1. LÓGICA DE IMÁGENES ---
+            // --- LÓGICA DE IMÁGENES ---
             const contenedorImagen = document.getElementById('contenedor-imagen');
             const imgElemento = document.getElementById('escena-imagen');
             
@@ -78,7 +100,7 @@ async function cargarEscena(id) {
                 contenedorImagen.classList.add('hidden');
             }
 
-            // --- 2. SISTEMA DE EMOCIONES (Cambio de color visual) ---
+            // --- SISTEMA DE EMOCIONES ---
             const contenedorPrincipal = document.getElementById('escena-container');
             if (contenedorPrincipal) {
                 if (escena.titulo_escena.includes("Ira")) {
@@ -96,11 +118,9 @@ async function cargarEscena(id) {
                 }
             }
 
-            // --- 3. RENDERIZAR TEXTOS ---
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
             document.getElementById('escena-texto').innerHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
 
-            // --- 4. RENDERIZAR OPCIONES ---
             const contenedor = document.getElementById('opciones');
             contenedor.innerHTML = '';
 
@@ -108,7 +128,6 @@ async function cargarEscena(id) {
                 const b = document.createElement('button');
                 b.className = "w-full p-5 glass-panel rounded-2xl text-left choice-btn flex justify-between items-center group";
                 
-                // LÓGICA DE OBJETOS: "Ticket Dorado"
                 const necesitaTicket = opc.texto_boton.toLowerCase().includes("entrar a la carpa");
                 const tieneTicket = estado.inventario.includes("Ticket Dorado");
 
@@ -132,7 +151,6 @@ async function cargarEscena(id) {
                 estado.inventario.push(item);
                 guardarPartida();
                 actualizarUI();
-                alert("¡Luz ha guardado: " + item + "!");
             }
         }
 
