@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENIGMA - Luz y el Circo de los Sueños</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #F8F9FA; }
+        .gold-border { border-color: #C9A063; }
+        .gold-text { color: #C9A063; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+    <div id="game-container" class="max-w-2xl w-full mt-10 space-y-8">
+        <h1 class="text-center text-4xl gold-text font-bold tracking-widest">ENIGMA</h1>
+        
+        <div class="bg-gray-900/50 p-8 rounded-2xl border gold-border shadow-2xl">
+            <h2 id="escena-titulo" class="text-2xl mb-4 gold-text font-bold">Cargando aventura...</h2>
+            <p id="escena-texto" class="text-xl leading-relaxed italic text-gray-300"></p>
+        </div>
+
+        <div id="opciones" class="grid grid-cols-1 gap-4">
+            <!-- Los botones aparecerán aquí -->
+        </div>
+    </div>
+
+    <script>
+        // ESTO CONECTA CON TU SUPABASE
+        // Sustituye con tus datos en el siguiente paso
+        const SUPABASE_URL = 'TU_URL_DE_SUPABASE';
+        const SUPABASE_KEY = 'TU_LLAVE_ANON_DE_SUPABASE';
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function cargarEscena(id) {
+            // 1. Traer la escena
+            const { data: escena } = await supabase
+                .from('escenas')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (escena) {
+                document.getElementById('escena-titulo').innerText = escena.titulo_escena;
+                document.getElementById('escena-texto').innerText = escena.texto_narrativo;
+            }
+
+            // 2. Traer las decisiones (botones)
+            const { data: decisiones } = await supabase
+                .from('decisiones')
+                .select('*')
+                .eq('escena_origen_id', id);
+
+            const contenedorOpciones = document.getElementById('opciones');
+            contenedorOpciones.innerHTML = '';
+
+            decisiones.forEach(opcion => {
+                const boton = document.createElement('button');
+                boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text";
+                boton.innerText = opcion.texto_boton;
+                boton.onclick = () => cargarEscena(opcion.escena_destino_id);
+                contenedorOpciones.appendChild(boton);
+            });
+        }
+
+        // Empezar por la escena 1
+        cargarEscena(1);
+    </script>
+</body>
+</html>
