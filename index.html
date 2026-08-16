@@ -2,114 +2,124 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ENIGMA - THE FINAL REBIRTH</title>
+    <title>ENIGMA OS v11.0</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #0B0E14; color: #E5E7EB; font-family: serif; }
-        .glass { background: rgba(31, 41, 55, 0.6); border: 1px solid rgba(201, 160, 99, 0.3); backdrop-filter: blur(10px); }
-        .gold { color: #C9A063; }
-        .btn { width: 100%; padding: 1rem; border: 1px solid rgba(201, 160, 99, 0.4); border-radius: 15px; text-align: left; transition: 0.3s; margin-bottom: 10px; }
-        .btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); }
-        .sidebar { position: fixed; right: 0; top: 0; height: 100%; width: 300px; transform: translateX(100%); transition: 0.3s; z-index: 50; }
-        .sidebar.open { transform: translateX(0); }
+        body { background: #080a0f; color: #d1d5db; font-family: 'Crimson Pro', serif; }
+        .gold-ui { color: #C9A063; border-color: #C9A063; }
+        .glass { background: rgba(15, 20, 28, 0.9); border: 1px solid rgba(201, 160, 99, 0.2); backdrop-filter: blur(12px); }
+        .choice-btn { width: 100%; padding: 1.2rem; border: 1px solid rgba(201, 160, 99, 0.3); border-radius: 12px; text-align: left; transition: 0.3s; margin-bottom: 0.8rem; background: rgba(255,255,255,0.02); }
+        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: scale(1.01); }
+        .choice-btn:disabled { opacity: 0.2; filter: grayscale(1); }
+        .inventory-item { padding: 8px; border: 1px solid #C9A063; border-radius: 8px; font-size: 10px; text-transform: uppercase; color: #C9A063; text-align: center; }
     </style>
 </head>
-<body class="p-6 flex flex-col items-center min-h-screen">
-    <nav class="w-full max-w-2xl flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-        <h1 class="text-3xl gold font-bold italic">ENIGMA</h1>
+<body class="p-4 md:p-10 flex flex-col items-center">
+    <nav class="w-full max-w-5xl flex justify-between items-center mb-10 border-b border-gray-800 pb-6">
+        <div>
+            <h1 class="text-4xl gold-ui font-bold italic tracking-tighter">ENIGMA</h1>
+            <div id="hearts" class="text-xl mt-2"></div>
+        </div>
         <div class="flex gap-4">
-            <button onclick="toggleDiary()" class="text-xs gold uppercase">📔 Diario</button>
-            <button onclick="reset()" class="text-xs text-gray-500 uppercase">Reiniciar</button>
+            <button onclick="toggleNotes()" class="px-4 py-2 glass gold-ui rounded-full text-xs uppercase font-bold">📔 Diario</button>
+            <button onclick="resetGame()" class="text-xs text-gray-600 hover:text-red-500 transition uppercase">Reset</button>
         </div>
     </nav>
 
-    <main class="w-full max-w-2xl space-y-6">
-        <div class="flex justify-between text-[10px] gold uppercase tracking-widest px-2">
-            <div id="vidas"></div>
-            <div id="inv-txt"></div>
-        </div>
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- MOCHILA -->
+        <aside class="hidden lg:block lg:col-span-1 space-y-4">
+            <h3 class="text-xs uppercase gold-ui font-bold tracking-[0.2em] mb-4 text-center">Mochila de Luz</h3>
+            <div id="inv-list" class="space-y-2"></div>
+        </aside>
 
-        <div id="card" class="glass p-8 rounded-[2rem] shadow-2xl transition-all duration-500 border-2">
-            <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-gold/10">
-                <img id="foto" src="" class="w-full h-64 object-cover hover:scale-110 transition duration-700">
+        <!-- ESCENA -->
+        <section class="lg:col-span-3 space-y-6">
+            <div id="card" class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl transition-all duration-500">
+                <div id="img-cont" class="hidden mb-8 rounded-3xl overflow-hidden border border-gold-ui/30">
+                    <img id="sc-img" src="" class="w-full h-auto object-cover max-h-[450px] hover:scale-105 transition duration-700">
+                </div>
+                <h2 id="sc-titulo" class="text-3xl md:text-5xl font-bold gold-ui mb-6 tracking-tight"></h2>
+                <div id="sc-texto" class="text-xl md:text-2xl leading-relaxed text-gray-300 italic mb-10"></div>
+                <div id="sc-opciones" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>
-            <h2 id="titulo" class="text-3xl font-bold gold mb-4"></h2>
-            <p id="texto" class="text-xl italic text-gray-300 mb-8 leading-relaxed"></p>
-            <div id="opciones"></div>
-        </div>
+        </section>
     </main>
 
-    <div id="diary" class="sidebar glass p-6">
-        <h3 class="gold mb-4 font-bold uppercase">Notas de Luz</h3>
-        <textarea id="notas" oninput="saveNotes()" class="w-full h-64 bg-gray-900 text-white p-4 rounded-xl border border-gold/20 outline-none" placeholder="Escribe pistas aquí..."></textarea>
-        <div id="mochila-visual" class="mt-8 space-y-2"></div>
+    <!-- NOTAS -->
+    <div id="diary" class="fixed right-0 top-0 h-full w-80 translate-x-full transition-transform duration-500 glass p-8 z-[100]">
+        <h3 class="gold-ui font-bold uppercase mb-6">Pistas de Investigación</h3>
+        <textarea id="notes-area" oninput="saveNotes()" class="w-full h-[80%] bg-transparent border border-gray-800 p-4 text-sm rounded-xl focus:border-gold-ui outline-none" placeholder="Anota aquí códigos, años o pistas que te den los personajes..."></textarea>
     </div>
 
     <script>
         const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
 
-        let save = JSON.parse(localStorage.getItem('save_luz')) || { id: 1, items: [], vidas: 3, notas: "" };
+        let save = JSON.parse(localStorage.getItem('enigma_pro')) || { id: 1, items: [], hp: 3, notes: "" };
 
         async function engine(id) {
             save.id = id;
-            localStorage.setItem('save_luz', JSON.stringify(save));
+            localStorage.setItem('enigma_pro', JSON.stringify(save));
             
             const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
-            if(!esc) return reset();
+            if(!esc) return resetGame();
 
-            // UI
-            document.getElementById('titulo').innerText = esc.titulo_escena;
-            document.getElementById('texto').innerText = esc.texto_narrativo;
-            const card = document.getElementById('card');
-            card.style.borderColor = esc.emocion === 'Ira' ? '#ef4444' : esc.emocion === 'Tristeza' ? '#3b82f6' : 'rgba(201, 160, 99, 0.3)';
+            document.getElementById('sc-titulo').innerText = esc.titulo_escena;
+            document.getElementById('sc-texto').innerHTML = esc.texto_narrativo.split('\n').map(p => `<p class="mb-4">${p}</p>`).join('');
 
             if(esc.imagen_url) {
-                document.getElementById('foto').src = esc.imagen_url;
+                document.getElementById('sc-img').src = esc.imagen_url;
                 document.getElementById('img-cont').classList.remove('hidden');
             } else { document.getElementById('img-cont').classList.add('hidden'); }
 
-            const div = document.getElementById('opciones');
-            div.innerHTML = '';
+            const optDiv = document.getElementById('sc-opciones');
+            optDiv.innerHTML = '';
 
             decs.forEach(d => {
                 const b = document.createElement('button');
-                b.className = "btn";
-                const lock = d.item_requerido && !save.items.includes(d.item_requerido);
+                b.className = "choice-btn flex justify-between items-center";
+                const locked = d.item_requerido && !save.items.includes(d.item_requerido);
                 
-                b.innerHTML = lock ? `🔒 ${d.texto_boton} <span class="text-[9px] block gold">Falta: ${d.item_requerido}</span>` : d.texto_boton;
-                b.disabled = lock;
-                if(lock) b.style.opacity = "0.4";
+                b.innerHTML = locked 
+                    ? `<span>🔒 ${d.texto_boton}</span><span class="text-[9px] uppercase gold-ui">Falta: ${d.item_requerido}</span>`
+                    : `<span>${d.texto_boton}</span><span class="gold-ui">→</span>`;
+                
+                b.disabled = locked;
 
                 b.onclick = () => {
                     if(d.es_codigo) {
-                        const val = prompt("Código secreto:");
-                        if(val !== "7") { alert("Error... sientes un escalofrío."); save.vidas--; updateUI(); return; }
+                        const input = prompt("Introduce el código de investigación:");
+                        const correct = (id === 5 && input === "64"); // Puzzles reales
+                        if(!correct) { alert("Código erróneo. Sientes que la realidad se agrieta..."); save.hp--; updateUI(); return; }
                     }
-                    if(d.item_entregado && !save.items.includes(d.item_entregado)) save.items.push(d.item_entregado);
+                    if(d.item_entregado && !save.items.includes(d.item_entregado)) {
+                        save.items.push(d.item_entregado);
+                        alert("¡Nuevo objeto! Luz ha guardado: " + d.item_entregado);
+                    }
                     engine(d.escena_destino_id);
                 };
-                div.appendChild(b);
+                optDiv.appendChild(b);
             });
             updateUI();
         }
 
         function updateUI() {
-            document.getElementById('vidas').innerText = "❤️".repeat(Math.max(0, save.vidas));
-            document.getElementById('inv-txt').innerText = "Mochila: " + save.items.length;
-            document.getElementById('mochila-visual').innerHTML = save.items.map(i => `<div class="p-2 border border-gold/20 rounded text-[10px] gold uppercase">🏷️ ${i}</div>`).join('');
-            if(save.vidas <= 0) { alert("Game Over"); reset(); }
+            document.getElementById('hearts').innerText = "❤️".repeat(Math.max(0, save.hp));
+            document.getElementById('inv-list').innerHTML = save.items.map(i => `<div class="inventory-item">🏷️ ${i}</div>`).join('');
+            if(save.hp <= 0) { alert("Tu mente no aguanta más... El Gran Gris te ha borrado."); resetGame(); }
         }
 
-        function toggleDiary() { document.getElementById('diary').classList.toggle('open'); }
-        function saveNotes() { save.notas = document.getElementById('notas').value; localStorage.setItem('save_luz', JSON.stringify(save)); }
-        function reset() { localStorage.removeItem('save_luz'); location.reload(); }
+        function toggleNotes() { document.getElementById('diary').classList.toggle('translate-x-full'); }
+        function saveNotes() { save.notes = document.getElementById('notes-area').value; localStorage.setItem('enigma_pro', JSON.stringify(save)); }
+        function resetGame() { localStorage.removeItem('enigma_pro'); location.reload(); }
 
-        window.onload = () => {
-            document.getElementById('notas').value = save.notas;
-            engine(save.id);
+        window.onload = () => { 
+            document.getElementById('notes-area').value = save.notes;
+            engine(save.id); 
         };
     </script>
 </body>
