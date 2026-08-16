@@ -1,52 +1,117 @@
-<script>
-        const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENIGMA: El Espectáculo Final</title>
+    <!-- 1. CARGA DE LIBRERÍAS (En el orden correcto) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #05070a; color: #d1d5db; font-family: 'Crimson Pro', serif; overflow-x: hidden; }
+        .gold { color: #C9A063; }
+        .glass { background: rgba(15, 20, 25, 0.9); border: 1px solid rgba(201, 160, 99, 0.2); backdrop-filter: blur(15px); }
+        .choice-btn { width: 100%; padding: 1.2rem; border: 1px solid rgba(201, 160, 99, 0.3); border-radius: 15px; text-align: left; transition: 0.3s; background: rgba(255,255,255,0.02); margin-bottom: 0.8rem; font-weight: bold; }
+        .choice-btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateX(8px); }
+        .choice-btn:disabled { opacity: 0.15; cursor: not-allowed; }
+        .sidebar { position: fixed; right: 0; top: 0; height: 100%; width: 320px; transform: translateX(100%); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; border-left: 1px solid #C9A063; }
+        .sidebar.open { transform: translateX(0); }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center min-h-screen">
+    
+    <nav class="w-full max-w-5xl flex justify-between items-center mb-8 border-b border-gray-800 pb-6">
+        <h1 class="text-4xl gold font-bold italic tracking-tighter">ENIGMA</h1>
+        <div class="flex items-center gap-4">
+            <div id="hearts" class="text-2xl"></div>
+            <button onclick="document.getElementById('diary').classList.toggle('open')" class="px-5 py-2 glass gold rounded-full text-xs font-bold border-gold hover:bg-gold/10 transition">📔 DIARIO</button>
+            <button onclick="resetGame()" class="text-xs text-gray-600 uppercase font-bold">Reset</button>
+        </div>
+    </nav>
 
-        let save = JSON.parse(localStorage.getItem('enigma_v20')) || { id: 1, items: [], hp: 3, notes: "" };
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-4 gap-10">
+        <aside class="hidden lg:block space-y-4">
+            <h3 class="text-xs uppercase gold font-bold tracking-widest text-center">Mochila</h3>
+            <div id="inv-list" class="space-y-2"></div>
+        </aside>
+
+        <section class="lg:col-span-3">
+            <div id="card" class="glass p-10 rounded-[3rem] shadow-2xl border-2">
+                <div id="img-cont" class="hidden mb-10 rounded-3xl overflow-hidden border border-gold/20 shadow-2xl">
+                    <img id="sc-img" src="" class="w-full h-auto object-cover max-h-[450px]">
+                </div>
+                <h2 id="sc-titulo" class="text-4xl font-bold gold mb-8 tracking-tight">Cargando Sueño...</h2>
+                <div id="sc-texto" class="text-2xl leading-relaxed text-gray-300 italic mb-12"></div>
+                <div id="sc-opciones" class="grid grid-cols-1 gap-4"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="diary" class="sidebar glass p-8 shadow-2xl">
+        <h3 class="gold font-bold uppercase mb-6 text-center">Grimorio de Luz</h3>
+        <textarea id="notes-area" oninput="saveNotes()" class="w-full h-[80%] bg-transparent border border-gray-800 p-4 text-sm rounded-xl focus:border-gold outline-none text-white" placeholder="Anota pistas aquí..."></textarea>
+    </div>
+
+    <script>
+        // 2. INICIALIZACIÓN BLINDADA
+        let sb;
+        let save;
+
+        window.onload = function() {
+            // Comprobamos si Supabase ha cargado
+            if (typeof supabase === 'undefined') {
+                document.getElementById('sc-titulo').innerText = "Error Crítico";
+                document.getElementById('sc-texto').innerText = "La librería de Supabase no ha cargado. Revisa tu conexión a internet o el enlace del script.";
+                return;
+            }
+
+            // Conectamos
+            sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
+            
+            // Cargamos partida
+            save = JSON.parse(localStorage.getItem('enigma_final_v2')) || { id: 1, items: [], hp: 3, notes: "" };
+            document.getElementById('notes-area').value = save.notes;
+            
+            // Arrancamos motor
+            engine(save.id);
+        };
 
         async function engine(id) {
             save.id = id;
-            localStorage.setItem('enigma_v20', JSON.stringify(save));
+            localStorage.setItem('enigma_final_v2', JSON.stringify(save));
             
-            // --- 1. DETECCIÓN DE FINALES (Nodos 73, 74, 75) ---
+            // Detectar Finales
             if (id >= 73 && id <= 75) {
-                const { data: finalEscena } = await sb.from('escenas').select('*').eq('id', id).single();
+                const { data: f } = await sb.from('escenas').select('*').eq('id', id).single();
                 document.getElementById('card').innerHTML = `
-                    <h2 class="text-4xl font-bold gold mb-6 text-center animate-pulse">${finalEscena.titulo_escena}</h2>
-                    <p class="text-xl italic text-gray-300 mb-10 leading-relaxed text-center">${finalEscena.texto_narrativo}</p>
-                    <div class="p-8 border border-gold/30 rounded-[2rem] text-center bg-gold/5 shadow-inner">
-                        <h3 class="gold uppercase text-xs tracking-[0.3em] mb-6">Insignias de Leyenda</h3>
+                    <h2 class="text-4xl font-bold gold mb-6 text-center animate-pulse">${f.titulo_escena}</h2>
+                    <p class="text-xl italic text-gray-300 mb-10 text-center">${f.texto_narrativo}</p>
+                    <div class="p-8 border border-gold/30 rounded-[2rem] text-center bg-gold/5">
+                        <h3 class="gold uppercase text-xs tracking-[0.3em] mb-6">Medallas</h3>
                         <div class="flex flex-wrap justify-center gap-4">
-                            <div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎪 Estrella del Show</div>
-                            ${save.items.length > 4 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎒 Gran Coleccionista</div>' : ''}
-                            ${save.hp === 3 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">💎 Voluntad Inquebrantable</div>' : ''}
-                            ${save.items.includes('Llave de Sangre') ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🗡️ Senda de la Guerrera</div>' : '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎨 Senda de la Artista</div>'}
+                            <div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎪 Estrella</div>
+                            ${save.items.length > 4 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎒 Coleccionista</div>' : ''}
+                            ${save.hp === 3 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">💎 Imbatible</div>' : ''}
                         </div>
                     </div>
-                    <button onclick="resetGame()" class="choice-btn mt-10 text-center flex justify-center py-6">
-                        <span class="gold font-bold">DESPERTAR Y VOLVER A EMPEZAR</span>
-                    </button>
+                    <button onclick="resetGame()" class="choice-btn mt-10 text-center flex justify-center py-6 font-bold">DESPERTAR</button>
                 `;
                 return;
             }
 
-            // --- 2. LÓGICA DE JUEGO NORMAL ---
             const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
             if(!esc) return resetGame();
 
-            // Títulos y Textos
             document.getElementById('sc-titulo').innerText = esc.titulo_escena;
             document.getElementById('sc-texto').innerHTML = esc.texto_narrativo.split('\n').map(p => `<p class="mb-4">${p}</p>`).join('');
 
-            // Imagen
             const imgCont = document.getElementById('img-cont');
-            if(esc.imagen_url) { 
-                document.getElementById('sc-img').src = esc.imagen_url; 
-                imgCont.classList.remove('hidden'); 
-            } else { imgCont.classList.add('hidden'); }
+            if(esc.imagen_url) { document.getElementById('sc-img').src = esc.imagen_url; imgCont.classList.remove('hidden'); }
+            else { imgCont.classList.add('hidden'); }
 
-            // Opciones
             const optDiv = document.getElementById('sc-opciones');
             optDiv.innerHTML = '';
 
@@ -59,23 +124,16 @@
                 b.disabled = locked;
 
                 b.onclick = () => {
-                    // VALIDACIÓN DE ACERTIJOS SEGÚN TU HISTORIA
+                    // ACERTIJOS
                     if(id === 19 || id === 32 || id === 46) {
-                        const res = prompt("Luz debe susurrar la respuesta:").toLowerCase().trim();
-                        const correctas = { 
-                            19: ["nube", "una nube"], 
-                            32: ["la letra e", "e"],
-                            46: ["2-0-7", "207"] 
-                        };
+                        const res = prompt("Escribe tu respuesta:").toLowerCase().trim();
+                        const correctas = { 19: ["nube", "una nube"], 32: ["la letra e", "e"], 46: ["2-0-7", "207"] };
                         if(!correctas[id].includes(res)) {
-                            alert("¡ERROR! Una descarga de energía púrpura te golpea.");
+                            alert("¡ERROR! Una descarga te golpea.");
                             save.hp--; updateUI(); return;
                         }
                     }
-                    if(d.item_entregado && !save.items.includes(d.item_entregado)) {
-                        save.items.push(d.item_entregado);
-                        alert("Has obtenido: " + d.item_entregado);
-                    }
+                    if(d.item_entregado && !save.items.includes(d.item_entregado)) save.items.push(d.item_entregado);
                     engine(d.escena_destino_id);
                 };
                 optDiv.appendChild(b);
@@ -85,11 +143,12 @@
 
         function updateUI() {
             document.getElementById('hearts').innerText = "❤️".repeat(Math.max(0, save.hp));
-            document.getElementById('inv-list').innerHTML = save.items.map(i => `<div class="p-2 border border-gold/20 rounded text-[10px] gold uppercase text-center">🏷️ ${i}</div>`).join('');
-            if(save.hp <= 0) { alert("Tu luz se ha extinguido..."); resetGame(); }
+            document.getElementById('inv-list').innerHTML = save.items.map(i => `<div class="p-2 border border-gold/20 rounded text-[10px] gold uppercase text-center mb-2">🏷️ ${i}</div>`).join('');
+            if(save.hp <= 0) { alert("Tu luz se ha apagado..."); resetGame(); }
         }
 
-        function saveNotes() { save.notes = document.getElementById('notes-area').value; localStorage.setItem('enigma_v20', JSON.stringify(save)); }
-        function resetGame() { localStorage.removeItem('enigma_v20'); location.reload(); }
-        window.onload = () => { document.getElementById('notes-area').value = save.notes; engine(save.id); };
+        function saveNotes() { save.notes = document.getElementById('notes-area').value; localStorage.setItem('enigma_final_v2', JSON.stringify(save)); }
+        function resetGame() { localStorage.removeItem('enigma_final_v2'); location.reload(); }
     </script>
+</body>
+</html>
