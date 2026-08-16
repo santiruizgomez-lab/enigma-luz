@@ -28,27 +28,37 @@
     </div>
 
     <script>
-        // ESTO CONECTA CON TU SUPABASE
-        // Sustituye con tus datos en el siguiente paso
-        const SUPABASE_URL = 'https://wsaxismjuiyvapdknjoi.supabase.co/rest/v1/';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // CAMBIAMOS EL NOMBRE A enigmaClient PARA EVITAR ERRORES
+        const SUPABASE_URL = 'https://wsaxismjuiyvapdknjoi.supabase.co/rest/v1/'; // <--- Pon tu URL aquí
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50'; // <--- Pon tu llave aquí
+        
+        // Aquí es donde estaba el error, ahora usamos "enigmaClient"
+        const enigmaClient = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function cargarEscena(id) {
-            // 1. Traer la escena
-            const { data: escena } = await supabase
+            console.log("Cargando escena:", id);
+            
+            // Usamos enigmaClient aquí también
+            const { data: escena, error: errorEscena } = await enigmaClient
                 .from('escenas')
                 .select('*')
                 .eq('id', id)
                 .single();
+
+            if (errorEscena) {
+                console.error("Error cargando escena:", errorEscena);
+                document.getElementById('escena-titulo').innerText = "Error";
+                document.getElementById('escena-texto').innerText = "No se pudo conectar con la base de datos. Revisa las Policies en Supabase.";
+                return;
+            }
 
             if (escena) {
                 document.getElementById('escena-titulo').innerText = escena.titulo_escena;
                 document.getElementById('escena-texto').innerText = escena.texto_narrativo;
             }
 
-            // 2. Traer las decisiones (botones)
-            const { data: decisiones } = await supabase
+            // Traer las decisiones
+            const { data: decisiones } = await enigmaClient
                 .from('decisiones')
                 .select('*')
                 .eq('escena_origen_id', id);
@@ -56,17 +66,17 @@
             const contenedorOpciones = document.getElementById('opciones');
             contenedorOpciones.innerHTML = '';
 
-            decisiones.forEach(opcion => {
-                const boton = document.createElement('button');
-                boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text";
-                boton.innerText = opcion.texto_boton;
-                boton.onclick = () => cargarEscena(opcion.escena_destino_id);
-                contenedorOpciones.appendChild(boton);
-            });
+            if (decisiones) {
+                decisiones.forEach(opcion => {
+                    const boton = document.createElement('button');
+                    boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text";
+                    boton.innerText = opcion.texto_boton;
+                    boton.onclick = () => cargarEscena(opcion.escena_destino_id);
+                    contenedorOpciones.appendChild(boton);
+                });
+            }
         }
 
         // Empezar por la escena 1
         cargarEscena(1);
     </script>
-</body>
-</html>
