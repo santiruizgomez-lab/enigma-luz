@@ -2,57 +2,71 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ENIGMA FIX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENIGMA - Fix Total</title>
+    <!-- Cargamos librerías -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-[#05070a] text-gray-200 p-6 font-serif flex flex-col items-center">
+<body class="bg-[#05070a] text-gray-200 p-4 font-serif flex flex-col items-center min-h-screen">
+    
     <nav class="w-full max-w-2xl flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
         <h1 class="text-3xl font-bold text-[#C9A063]">ENIGMA</h1>
-        <button onclick="localStorage.clear(); location.reload();" class="text-xs text-gray-500">RESET</button>
+        <button onclick="reiniciarTodo()" class="text-xs text-gray-500 uppercase border border-gray-700 px-2 py-1 rounded">Reset Total</button>
     </nav>
 
     <main class="w-full max-w-2xl">
-        <div id="status-bar" class="text-[10px] text-[#C9A063] uppercase mb-2"></div>
-        <div id="game-card" class="bg-gray-900/50 border-2 border-yellow-600/20 p-8 rounded-[2rem] shadow-2xl">
+        <!-- HUD -->
+        <div id="hud" class="text-[10px] text-[#C9A063] uppercase tracking-widest mb-2 flex justify-between">
+            <span id="vidas-ui"></span>
+            <span id="mochila-ui"></span>
+        </div>
+
+        <!-- Tarjeta de Juego -->
+        <div class="bg-gray-900/60 border-2 border-yellow-600/20 p-6 md:p-10 rounded-[2rem] shadow-2xl">
             <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-yellow-600/10">
                 <img id="sc-img" src="" class="w-full h-auto object-cover max-h-[400px]">
             </div>
-            <h2 id="sc-titulo" class="text-3xl font-bold text-[#C9A063] mb-4">Iniciando...</h2>
-            <p id="sc-texto" class="text-xl italic text-gray-300 mb-8"></p>
+            <h2 id="sc-titulo" class="text-2xl md:text-4xl font-bold text-[#C9A063] mb-4">Cargando aventura...</h2>
+            <div id="sc-texto" class="text-lg md:text-xl italic text-gray-300 mb-8 leading-relaxed"></div>
             <div id="sc-opciones" class="space-y-3"></div>
         </div>
-        <textarea id="notas" oninput="saveNotes()" class="w-full h-32 mt-6 bg-black/40 border border-gray-800 p-4 rounded-xl text-sm outline-none focus:border-[#C9A063]" placeholder="Tus notas..."></textarea>
+
+        <!-- Bloc de Notas -->
+        <textarea id="notas" oninput="guardarNotas()" class="w-full h-32 mt-6 bg-black/40 border border-gray-800 p-4 rounded-xl text-sm outline-none focus:border-[#C9A063]" placeholder="Escribe tus pistas aquí..."></textarea>
     </main>
 
     <script>
-        // ESTAS SON TUS CLAVES. EL CÓDIGO LAS LIMPIA AUTOMÁTICAMENTE.
-        const URL_SUCIA = 'https://wsaxismjuiyvapdknjoi.supabase.co'; 
-        const KEY_SUCIA = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
+        // 1. INICIALIZACIÓN ABSOLUTA SIN VARIABLES EXTERNAS
+        const supabaseUrl = 'https://wsaxismjuiyvapdknjoi.supabase.co'.trim();
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50'.trim();
+        
+        let sb;
+        try {
+            sb = supabase.createClient(supabaseUrl, supabaseKey);
+        } catch (e) {
+            alert("Error al iniciar conexión: " + e.message);
+        }
 
-        // Limpieza de seguridad
-        const URL = URL_SUCIA.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '').trim();
-        const KEY = KEY_SUCIA.trim();
-
-        const sb = supabase.createClient(URL, KEY);
-
-        let save = JSON.parse(localStorage.getItem('enigma_vFinal')) || { id: 1, items: [], hp: 3, notes: "" };
+        // 2. ESTADO DEL JUGADOR
+        let save = JSON.parse(localStorage.getItem('enigma_vFinal_v2')) || { id: 1, items: [], hp: 3, notes: "" };
 
         async function engine(id) {
             save.id = id;
-            localStorage.setItem('enigma_vFinal', JSON.stringify(save));
-            
+            localStorage.setItem('enigma_vFinal_v2', JSON.stringify(save));
+
             const { data: esc, error: e1 } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs, error: e2 } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
             if (e1 || !esc) {
-                document.getElementById('sc-titulo').innerText = "Error de datos";
-                document.getElementById('sc-texto').innerText = "Asegúrate de haber ejecutado el SQL en Supabase.";
+                document.getElementById('sc-titulo').innerText = "Faltan datos";
+                document.getElementById('sc-texto').innerText = "Por favor, asegúrate de ejecutar el SQL en Supabase para crear las escenas.";
                 return;
             }
 
+            // Actualizar UI
             document.getElementById('sc-titulo').innerText = esc.titulo_escena;
-            document.getElementById('sc-texto').innerText = esc.texto_narrativo;
+            document.getElementById('sc-texto').innerHTML = esc.texto_narrativo.split('\n').map(p => `<p class="mb-4">${p}</p>`).join('');
             
             const imgCont = document.getElementById('img-cont');
             if(esc.imagen_url) {
@@ -66,21 +80,29 @@
             if (decs) {
                 decs.forEach(d => {
                     const b = document.createElement('button');
-                    b.className = "w-full p-4 border border-yellow-600/30 rounded-xl text-left hover:bg-yellow-600/10 transition";
+                    b.className = "w-full p-4 border border-yellow-600/30 rounded-xl text-left hover:bg-yellow-600/10 transition flex justify-between items-center";
+                    
                     const locked = d.item_requerido && !save.items.includes(d.item_requerido);
-                    b.innerHTML = locked ? `🔒 ${d.texto_boton}` : d.texto_boton;
-                    b.disabled = locked;
-                    b.onclick = () => {
-                        if(d.respuesta_secreta) {
-                            const res = prompt("Introduce el secreto:").toLowerCase().trim();
-                            if(res !== d.respuesta_secreta.toLowerCase()) {
-                                alert("Error... pierdes una vida.");
-                                save.hp--; updateUI(); return;
+                    if (locked) {
+                        b.innerHTML = `<span class="opacity-40 italic">🔒 ${d.texto_boton}</span> <span class="text-[9px] text-yellow-700">Falta: ${d.item_requerido}</span>`;
+                        b.disabled = true;
+                    } else {
+                        b.innerHTML = `<span>${d.texto_boton}</span> <span>→</span>`;
+                        b.onclick = () => {
+                            if(d.respuesta_secreta) {
+                                const res = prompt("Introduce el secreto:").toLowerCase().trim();
+                                if(res !== d.respuesta_secreta.toLowerCase()) {
+                                    alert("¡ERROR! Pierdes una vida.");
+                                    save.hp--; updateUI(); return;
+                                }
                             }
-                        }
-                        if(d.item_entregado && !save.items.includes(d.item_entregado)) save.items.push(d.item_entregado);
-                        engine(d.escena_destino_id);
-                    };
+                            if(d.item_entregado && !save.items.includes(d.item_entregado)) {
+                                save.items.push(d.item_entregado);
+                                alert("Objeto conseguido: " + d.item_entregado);
+                            }
+                            engine(d.escena_destino_id);
+                        };
+                    }
                     div.appendChild(b);
                 });
             }
@@ -88,13 +110,19 @@
         }
 
         function updateUI() {
-            document.getElementById('status-bar').innerText = "Vidas: " + "❤️".repeat(Math.max(0, save.hp)) + " | Items: " + (save.items.length || "0");
-            if(save.hp <= 0) { alert("Game Over"); localStorage.clear(); location.reload(); }
+            document.getElementById('vidas-ui').innerText = "Vidas: " + "❤️".repeat(Math.max(0, save.hp));
+            document.getElementById('mochila-ui').innerText = "Mochila: " + (save.items.length || "0");
+            if(save.hp <= 0) { alert("Has perdido el juicio... el Gran Gris te atrapó."); reiniciarTodo(); }
         }
 
-        function saveNotes() {
+        function guardarNotas() {
             save.notes = document.getElementById('notas').value;
-            localStorage.setItem('enigma_vFinal', JSON.stringify(save));
+            localStorage.setItem('enigma_vFinal_v2', JSON.stringify(save));
+        }
+
+        function reiniciarTodo() {
+            localStorage.clear();
+            location.reload();
         }
 
         window.onload = () => {
