@@ -2,35 +2,70 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ENIGMA - START</title>
+    <title>ENIGMA - THE FINAL REBIRTH</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0B0E14; color: #E5E7EB; font-family: serif; }
+        .glass { background: rgba(31, 41, 55, 0.6); border: 1px solid rgba(201, 160, 99, 0.3); backdrop-filter: blur(10px); }
+        .gold { color: #C9A063; }
+        .btn { width: 100%; padding: 1rem; border: 1px solid rgba(201, 160, 99, 0.4); border-radius: 15px; text-align: left; transition: 0.3s; margin-bottom: 10px; }
+        .btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); }
+        .sidebar { position: fixed; right: 0; top: 0; height: 100%; width: 300px; transform: translateX(100%); transition: 0.3s; z-index: 50; }
+        .sidebar.open { transform: translateX(0); }
+    </style>
 </head>
-<body class="bg-[#0B0E14] text-white p-10 font-serif flex flex-col items-center">
-    <div class="max-w-xl w-full border border-yellow-600/30 p-8 rounded-3xl bg-gray-900/40 shadow-2xl">
-        <h1 id="titulo" class="text-3xl font-bold text-[#C9A063] mb-6 text-center text-orange-200">Cargando...</h1>
-        <div id="img-cont" class="hidden mb-6"><img id="foto" class="w-full rounded-xl border border-yellow-900/20 shadow-lg"></div>
-        <p id="texto" class="text-xl italic text-gray-300 mb-8 text-center leading-relaxed"></p>
-        <div id="opciones" class="space-y-4"></div>
+<body class="p-6 flex flex-col items-center min-h-screen">
+    <nav class="w-full max-w-2xl flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+        <h1 class="text-3xl gold font-bold italic">ENIGMA</h1>
+        <div class="flex gap-4">
+            <button onclick="toggleDiary()" class="text-xs gold uppercase">📔 Diario</button>
+            <button onclick="reset()" class="text-xs text-gray-500 uppercase">Reiniciar</button>
+        </div>
+    </nav>
+
+    <main class="w-full max-w-2xl space-y-6">
+        <div class="flex justify-between text-[10px] gold uppercase tracking-widest px-2">
+            <div id="vidas"></div>
+            <div id="inv-txt"></div>
+        </div>
+
+        <div id="card" class="glass p-8 rounded-[2rem] shadow-2xl transition-all duration-500 border-2">
+            <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-gold/10">
+                <img id="foto" src="" class="w-full h-64 object-cover hover:scale-110 transition duration-700">
+            </div>
+            <h2 id="titulo" class="text-3xl font-bold gold mb-4"></h2>
+            <p id="texto" class="text-xl italic text-gray-300 mb-8 leading-relaxed"></p>
+            <div id="opciones"></div>
+        </div>
+    </main>
+
+    <div id="diary" class="sidebar glass p-6">
+        <h3 class="gold mb-4 font-bold uppercase">Notas de Luz</h3>
+        <textarea id="notas" oninput="saveNotes()" class="w-full h-64 bg-gray-900 text-white p-4 rounded-xl border border-gold/20 outline-none" placeholder="Escribe pistas aquí..."></textarea>
+        <div id="mochila-visual" class="mt-8 space-y-2"></div>
     </div>
 
     <script>
-        const CLIENTE = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
+        const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
 
-        async function irA(id) {
-            console.log("Cargando escena:", id);
-            const { data: esc, error: err1 } = await CLIENTE.from('escenas').select('*').eq('id', id).single();
-            const { data: decs, error: err2 } = await CLIENTE.from('decisiones').select('*').eq('escena_origen_id', id);
+        let save = JSON.parse(localStorage.getItem('save_luz')) || { id: 1, items: [], vidas: 3, notas: "" };
+
+        async function engine(id) {
+            save.id = id;
+            localStorage.setItem('save_luz', JSON.stringify(save));
             
-            if (err1 || !esc) {
-                document.getElementById('titulo').innerText = "Error de Datos";
-                document.getElementById('texto').innerText = "Vuelve a ejecutar el SQL en Supabase y refresca.";
-                return;
-            }
+            const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
+            const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
+            if(!esc) return reset();
+
+            // UI
             document.getElementById('titulo').innerText = esc.titulo_escena;
             document.getElementById('texto').innerText = esc.texto_narrativo;
-            
+            const card = document.getElementById('card');
+            card.style.borderColor = esc.emocion === 'Ira' ? '#ef4444' : esc.emocion === 'Tristeza' ? '#3b82f6' : 'rgba(201, 160, 99, 0.3)';
+
             if(esc.imagen_url) {
                 document.getElementById('foto').src = esc.imagen_url;
                 document.getElementById('img-cont').classList.remove('hidden');
@@ -38,17 +73,44 @@
 
             const div = document.getElementById('opciones');
             div.innerHTML = '';
+
             decs.forEach(d => {
-                const btn = document.createElement('button');
-                btn.className = "w-full p-4 border border-yellow-600/40 rounded-xl hover:bg-yellow-600/20 transition text-left text-orange-100 font-bold";
-                btn.innerText = d.texto_boton + " →";
-                btn.onclick = () => irA(d.escena_destino_id);
-                div.appendChild(btn);
+                const b = document.createElement('button');
+                b.className = "btn";
+                const lock = d.item_requerido && !save.items.includes(d.item_requerido);
+                
+                b.innerHTML = lock ? `🔒 ${d.texto_boton} <span class="text-[9px] block gold">Falta: ${d.item_requerido}</span>` : d.texto_boton;
+                b.disabled = lock;
+                if(lock) b.style.opacity = "0.4";
+
+                b.onclick = () => {
+                    if(d.es_codigo) {
+                        const val = prompt("Código secreto:");
+                        if(val !== "7") { alert("Error... sientes un escalofrío."); save.vidas--; updateUI(); return; }
+                    }
+                    if(d.item_entregado && !save.items.includes(d.item_entregado)) save.items.push(d.item_entregado);
+                    engine(d.escena_destino_id);
+                };
+                div.appendChild(b);
             });
+            updateUI();
         }
-        
-        // Arrancamos siempre de cero
-        window.onload = () => { irA(1); };
+
+        function updateUI() {
+            document.getElementById('vidas').innerText = "❤️".repeat(Math.max(0, save.vidas));
+            document.getElementById('inv-txt').innerText = "Mochila: " + save.items.length;
+            document.getElementById('mochila-visual').innerHTML = save.items.map(i => `<div class="p-2 border border-gold/20 rounded text-[10px] gold uppercase">🏷️ ${i}</div>`).join('');
+            if(save.vidas <= 0) { alert("Game Over"); reset(); }
+        }
+
+        function toggleDiary() { document.getElementById('diary').classList.toggle('open'); }
+        function saveNotes() { save.notas = document.getElementById('notas').value; localStorage.setItem('save_luz', JSON.stringify(save)); }
+        function reset() { localStorage.removeItem('save_luz'); location.reload(); }
+
+        window.onload = () => {
+            document.getElementById('notas').value = save.notas;
+            engine(save.id);
+        };
     </script>
 </body>
 </html>
