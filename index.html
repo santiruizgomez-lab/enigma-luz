@@ -50,4 +50,74 @@
 
     <script>
         const URL = 'https://wsaxismjuiyvapdknjoi.supabase.co';
-        const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+        const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
+        const supabaseClient = supabase.createClient(URL, KEY);
+
+        let estado = JSON.parse(localStorage.getItem('enigma_save')) || { escena: 1, valor: 3, items: [], notas: "" };
+
+        async function cargarEscena(id) {
+            estado.escena = id;
+            localStorage.setItem('enigma_save', JSON.stringify(estado));
+            
+            const { data: escena, error } = await supabaseClient.from('escenas').select('*').eq('id', id).single();
+            const { data: decisiones } = await supabaseClient.from('decisiones').select('*').eq('escena_origen_id', id);
+
+            if (error || !escena) { reiniciar(); return; }
+
+            // Render Imagen
+            const imgCont = document.getElementById('img-cont');
+            if (escena.imagen_url) { 
+                document.getElementById('escena-img').src = escena.imagen_url;
+                imgCont.classList.remove('hidden');
+            } else { imgCont.classList.add('hidden'); }
+
+            document.getElementById('escena-titulo').innerText = escena.titulo_escena;
+            document.getElementById('escena-texto').innerText = escena.texto_narrativo;
+
+            const divOpciones = document.getElementById('opciones');
+            divOpciones.innerHTML = '';
+
+            decisiones.forEach(d => {
+                const b = document.createElement('button');
+                b.className = "choice-btn";
+                
+                const bloqueado = d.item_requerido && !estado.items.includes(d.item_requerido);
+                
+                if (bloqueado) {
+                    b.innerHTML = `<span>🔒 ${d.texto_boton}</span> <span class="text-[10px] gold-text block">Necesitas: ${d.item_requerido}</span>`;
+                    b.disabled = true;
+                    b.style.opacity = "0.4";
+                } else {
+                    b.innerHTML = `<span>${d.texto_boton}</span>`;
+                    b.onclick = () => {
+                        if (d.texto_boton.includes("[CÓDIGO]")) {
+                            const res = prompt("Introduce el código de tu diario:");
+                            if (res !== "7") { alert("Código erróneo. El frío te envuelve..."); estado.valor--; actualizarUI(); return; }
+                        }
+                        if (d.item_entregado) {
+                            if(!estado.items.includes(d.item_entregado)) estado.items.push(d.item_entregado);
+                        }
+                        cargarEscena(d.escena_destino_id);
+                    };
+                }
+                divOpciones.appendChild(b);
+            });
+            actualizarUI();
+        }
+
+        function actualizarUI() {
+            document.getElementById('valor').innerText = "❤️".repeat(Math.max(0, estado.valor));
+            document.getElementById('mochila-txt').innerText = "Inventario: " + (estado.items.length || "Vacío");
+            if (estado.valor <= 0) { alert("Has perdido el juicio... el Gran Gris te atrapó."); reiniciar(); }
+        }
+
+        function saveNotes() { estado.notas = document.getElementById('notas').value; localStorage.setItem('enigma_save', JSON.stringify(estado)); }
+        function reiniciar() { localStorage.removeItem('enigma_save'); location.reload(); }
+
+        window.onload = () => {
+            document.getElementById('notas').value = estado.notas;
+            cargarEscena(estado.escena);
+        };
+    </script>
+</body>
+</html>
