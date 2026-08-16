@@ -3,112 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENIGMA - Luz y el Circo</title>
+    <title>ENIGMA - Narrativa Profunda</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #F8F9FA; }
-        .gold-border { border-color: #C9A063; }
+        body { font-family: 'Crimson Pro', serif; background-color: #0B0E14; color: #E5E7EB; line-height: 1.8; }
         .gold-text { color: #C9A063; }
-        .stat-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(201, 160, 99, 0.2); }
+        .glass-panel { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(201, 160, 99, 0.2); }
+        .choice-btn { border: 1px solid rgba(201, 160, 99, 0.4); transition: all 0.3s ease; }
+        .choice-btn:hover { background: rgba(201, 160, 99, 0.1); border-color: #C9A063; transform: translateX(5px); }
+        p { margin-bottom: 1.5rem; font-size: 1.25rem; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-4">
-    <div id="game-container" class="max-w-2xl w-full mt-6 space-y-6">
-        
-        <!-- CABECERA: ENIGMA + STATS -->
-        <div class="flex justify-between items-center border-b gold-border pb-4">
-            <div>
-                <h1 class="text-3xl gold-text font-bold tracking-widest">ENIGMA</h1>
-                <p id="valor-display" class="text-xs gold-text mt-1 uppercase tracking-tighter">Valor: ❤️❤️❤️</p>
-            </div>
-            <div id="mochila" class="flex gap-2"></div>
+<body class="min-h-screen flex flex-col items-center">
+    <!-- BARRA DE PROGRESO Y STATS -->
+    <nav class="w-full max-w-3xl flex justify-between items-center p-6 sticky top-0 z-50 bg-[#0B0E14]/90">
+        <div class="flex flex-col">
+            <span class="text-xs uppercase tracking-widest gold-text font-bold">Aventura: Luz y el Circo</span>
+            <div id="valor-hearts" class="flex gap-1 text-xl"></div>
         </div>
-        
-        <div id="pantalla-juego" class="space-y-6">
-            <div class="bg-gray-900/50 p-8 rounded-2xl border gold-border shadow-2xl relative overflow-hidden">
-                <div id="efecto-daño" class="absolute inset-0 bg-red-900/20 hidden pointer-events-none"></div>
-                <h2 id="escena-titulo" class="text-2xl mb-4 gold-text font-bold"></h2>
-                <p id="escena-texto" class="text-xl leading-relaxed italic text-gray-300"></p>
+        <div id="mochila" class="flex gap-2"></div>
+    </nav>
+
+    <main id="game-container" class="max-w-3xl w-full p-6 pb-24">
+        <div id="escena-container" class="glass-panel p-8 md:p-12 rounded-3xl shadow-2xl mb-8">
+            <h2 id="escena-titulo" class="text-3xl md:text-4xl font-bold gold-text mb-8 border-b border-gold/20 pb-4"></h2>
+            <div id="escena-texto" class="space-y-4 italic text-gray-200">
+                <!-- El texto largo de la IA aparecerá aquí -->
             </div>
-            <div id="opciones" class="grid grid-cols-1 gap-4"></div>
         </div>
 
-        <!-- BOTÓN REINICIAR (Solo aparece al morir) -->
-        <button id="btn-reiniciar" onclick="location.reload()" class="hidden w-full p-4 border border-red-600 text-red-500 rounded-xl font-bold hover:bg-red-900/20 transition">
-            Intentar de nuevo la aventura
-        </button>
-    </div>
+        <div id="opciones" class="space-y-4">
+            <!-- Múltiples decisiones aquí -->
+        </div>
+    </main>
 
     <script>
         const URL_PROYECTO = 'https://wsaxismjuiyvapdknjoi.supabase.co'; 
         const KEY_PROYECTO = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
         const { createClient } = supabase;
-        const clienteEnigma = createClient(URL_PROYECTO, KEY_PROYECTO);
+        const enigma = createClient(URL_PROYECTO, KEY_PROYECTO);
 
-        // ESTADO GLOBAL
-        let valor = 3;
-        let inventario = [];
+        let estado = { valor: 3, inventario: [] };
 
         async function cargarEscena(id) {
-            const { data: escena } = await clienteEnigma.from('escenas').select('*').eq('id', id).single();
-            const { data: decisiones } = await clienteEnigma.from('decisiones').select('*').eq('escena_origen_id', id);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            const { data: escena } = await enigma.from('escenas').select('*').eq('id', id).single();
+            const { data: decisiones } = await enigma.from('decisiones').select('*').eq('escena_origen_id', id);
 
-            // LOGICA DE CONSECUENCIAS:
-            // Si la escena es la del rugido (ID 5), Luz pierde todo su valor
-            if (id === 5) { 
-                valor = 0;
-                actualizarStats();
-            }
+            if (!escena) return;
 
+            // Renderizar texto con saltos de línea (párrafos)
             document.getElementById('escena-titulo').innerText = escena.titulo_escena;
-            document.getElementById('escena-texto').innerText = escena.texto_narrativo;
+            const textoHTML = escena.texto_narrativo.split('\n').map(p => `<p>${p}</p>`).join('');
+            document.getElementById('escena-texto').innerHTML = textoHTML;
 
-            const contenedorOpciones = document.getElementById('opciones');
-            contenedorOpciones.innerHTML = '';
+            const contenedor = document.getElementById('opciones');
+            contenedor.innerHTML = '';
 
-            if (valor <= 0) {
-                document.getElementById('escena-titulo').innerText = "FIN DE LA AVENTURA";
-                document.getElementById('btn-reiniciar').classList.remove('hidden');
-                return;
-            }
-
-            decisiones.forEach(opcion => {
-                const boton = document.createElement('button');
-                boton.className = "w-full p-4 border gold-border bg-gray-800/50 hover:bg-yellow-900/20 rounded-xl text-left transition gold-text font-bold";
-                
-                // Bloqueo por ticket (como antes)
-                if (opcion.texto_boton.includes("entrar a la carpa") && !inventario.includes('Ticket Dorado')) {
-                    boton.innerHTML = `🔒 ${opcion.texto_boton} (Necesitas Ticket)`;
-                    boton.disabled = true;
-                    boton.classList.add('opacity-50');
-                } else {
-                    boton.innerText = opcion.texto_boton;
-                    boton.onclick = () => {
-                        if (opcion.texto_boton.includes("Buscar entre los arbustos")) añadirObjeto('Ticket Dorado');
-                        cargarEscena(opcion.escena_destino_id);
-                    };
-                }
-                contenedorOpciones.appendChild(boton);
+            decisiones.forEach(opc => {
+                const b = document.createElement('button');
+                b.className = "w-full p-6 glass-panel rounded-2xl text-left choice-btn flex items-center gap-4 group";
+                b.innerHTML = `
+                    <div class="w-2 h-2 rounded-full bg-[#C9A063] group-hover:scale-150 transition"></div>
+                    <span class="text-lg font-bold">${opc.texto_boton}</span>
+                `;
+                b.onclick = () => cargarEscena(opc.escena_destino_id);
+                contenedor.appendChild(b);
             });
+
+            actualizarInterfaz();
         }
 
-        function actualizarStats() {
-            document.getElementById('valor-display').innerText = "Valor: " + "❤️".repeat(valor);
-            if (valor === 0) document.getElementById('valor-display').innerText = "Valor: 💀 DERROTADA";
-        }
-
-        function añadirObjeto(nombre) {
-            if (!inventario.includes(nombre)) {
-                inventario.push(nombre);
-                actualizarMochila();
-            }
-        }
-
-        function actualizarMochila() {
-            const divMochila = document.getElementById('mochila');
-            divMochila.innerHTML = inventario.map(item => `<span class="px-2 py-1 stat-card rounded text-[10px] gold-text">🏷️ ${item}</span>`).join('');
+        function actualizarInterfaz() {
+            document.getElementById('valor-hearts').innerText = "❤️".repeat(estado.valor);
         }
 
         window.onload = () => cargarEscena(1);
