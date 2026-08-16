@@ -7,18 +7,46 @@
             save.id = id;
             localStorage.setItem('enigma_v20', JSON.stringify(save));
             
+            // --- 1. DETECCIÓN DE FINALES (Nodos 73, 74, 75) ---
+            if (id >= 73 && id <= 75) {
+                const { data: finalEscena } = await sb.from('escenas').select('*').eq('id', id).single();
+                document.getElementById('card').innerHTML = `
+                    <h2 class="text-4xl font-bold gold mb-6 text-center animate-pulse">${finalEscena.titulo_escena}</h2>
+                    <p class="text-xl italic text-gray-300 mb-10 leading-relaxed text-center">${finalEscena.texto_narrativo}</p>
+                    <div class="p-8 border border-gold/30 rounded-[2rem] text-center bg-gold/5 shadow-inner">
+                        <h3 class="gold uppercase text-xs tracking-[0.3em] mb-6">Insignias de Leyenda</h3>
+                        <div class="flex flex-wrap justify-center gap-4">
+                            <div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎪 Estrella del Show</div>
+                            ${save.items.length > 4 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎒 Gran Coleccionista</div>' : ''}
+                            ${save.hp === 3 ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">💎 Voluntad Inquebrantable</div>' : ''}
+                            ${save.items.includes('Llave de Sangre') ? '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🗡️ Senda de la Guerrera</div>' : '<div class="p-3 border border-gold/20 rounded-xl text-[10px] gold uppercase">🎨 Senda de la Artista</div>'}
+                        </div>
+                    </div>
+                    <button onclick="resetGame()" class="choice-btn mt-10 text-center flex justify-center py-6">
+                        <span class="gold font-bold">DESPERTAR Y VOLVER A EMPEZAR</span>
+                    </button>
+                `;
+                return;
+            }
+
+            // --- 2. LÓGICA DE JUEGO NORMAL ---
             const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
             const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
 
             if(!esc) return resetGame();
 
+            // Títulos y Textos
             document.getElementById('sc-titulo').innerText = esc.titulo_escena;
             document.getElementById('sc-texto').innerHTML = esc.texto_narrativo.split('\n').map(p => `<p class="mb-4">${p}</p>`).join('');
 
+            // Imagen
             const imgCont = document.getElementById('img-cont');
-            if(esc.imagen_url) { document.getElementById('sc-img').src = esc.imagen_url; imgCont.classList.remove('hidden'); }
-            else { imgCont.classList.add('hidden'); }
+            if(esc.imagen_url) { 
+                document.getElementById('sc-img').src = esc.imagen_url; 
+                imgCont.classList.remove('hidden'); 
+            } else { imgCont.classList.add('hidden'); }
 
+            // Opciones
             const optDiv = document.getElementById('sc-opciones');
             optDiv.innerHTML = '';
 
@@ -33,18 +61,21 @@
                 b.onclick = () => {
                     // VALIDACIÓN DE ACERTIJOS SEGÚN TU HISTORIA
                     if(id === 19 || id === 32 || id === 46) {
-                        const res = prompt("Escribe tu respuesta:").toLowerCase().trim();
+                        const res = prompt("Luz debe susurrar la respuesta:").toLowerCase().trim();
                         const correctas = { 
                             19: ["nube", "una nube"], 
                             32: ["la letra e", "e"],
                             46: ["2-0-7", "207"] 
                         };
                         if(!correctas[id].includes(res)) {
-                            alert("¡ERROR! Una descarga de energía te golpea.");
+                            alert("¡ERROR! Una descarga de energía púrpura te golpea.");
                             save.hp--; updateUI(); return;
                         }
                     }
-                    if(d.item_entregado && !save.items.includes(d.item_entregado)) save.items.push(d.item_entregado);
+                    if(d.item_entregado && !save.items.includes(d.item_entregado)) {
+                        save.items.push(d.item_entregado);
+                        alert("Has obtenido: " + d.item_entregado);
+                    }
                     engine(d.escena_destino_id);
                 };
                 optDiv.appendChild(b);
