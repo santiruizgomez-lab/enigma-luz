@@ -2,131 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENIGMA - Legado Final</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ENIGMA - Fix Final</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body { background: #0B0E14; color: #E5E7EB; font-family: 'Crimson Pro', serif; }
-        .gold { color: #C9A063; }
-        .panel { background: rgba(31, 41, 55, 0.4); border: 1px solid rgba(201, 160, 99, 0.3); border-radius: 24px; backdrop-filter: blur(10px); }
-        .btn { width: 100%; padding: 1.2rem; margin-top: 1rem; border: 1px solid rgba(201, 160, 99, 0.4); border-radius: 15px; text-align: left; transition: 0.3s; background: rgba(255,255,255,0.02); }
-        .btn:hover:not(:disabled) { border-color: #C9A063; background: rgba(201, 160, 99, 0.1); transform: translateX(5px); }
-        .btn:disabled { opacity: 0.3; }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="p-4 flex flex-col items-center min-h-screen">
-    <nav class="w-full max-w-2xl flex justify-between py-6 border-b border-gray-800 mb-8">
-        <h1 class="text-3xl gold font-bold italic tracking-tighter">ENIGMA</h1>
-        <button onclick="borrarYReiniciar()" class="text-[10px] text-gray-500 uppercase tracking-widest border border-gray-800 px-3 py-1 rounded hover:text-red-500">Reset Total</button>
-    </nav>
-
-    <main class="w-full max-w-2xl">
-        <div id="status" class="text-[10px] gold uppercase mb-4 tracking-widest">Iniciando sistema...</div>
-        
-        <div id="game-card" class="panel p-8 shadow-2xl">
-            <div id="img-cont" class="hidden mb-6 rounded-2xl overflow-hidden border border-gold/10">
-                <img id="sc-img" src="" class="w-full h-64 object-cover">
-            </div>
-            <h2 id="sc-titulo" class="text-3xl font-bold gold mb-4">Cargando...</h2>
-            <p id="sc-texto" class="text-xl leading-relaxed italic text-gray-300 mb-8"></p>
-            <div id="sc-opciones" class="space-y-3"></div>
-        </div>
-
-        <div id="debug-error" class="hidden mt-8 p-6 bg-red-900/10 border border-red-500/50 text-red-500 rounded-2xl">
-            <h3 class="font-bold mb-2">Error de Conexión:</h3>
-            <p id="error-msg" class="text-sm font-mono"></p>
-        </div>
-    </main>
-
+<body class="bg-[#0B0E14] text-white p-10 font-serif">
+    <div class="max-w-xl mx-auto border border-yellow-600/30 p-8 rounded-3xl bg-gray-900/40">
+        <h1 id="titulo" class="text-3xl font-bold text-[#C9A063] mb-4 text-center">Cargando...</h1>
+        <div id="img-cont" class="hidden mb-6"><img id="foto" class="w-full rounded-xl border border-yellow-600/20"></div>
+        <p id="texto" class="text-xl italic text-gray-300 mb-8 text-center"></p>
+        <div id="opciones" class="space-y-4"></div>
+    </div>
     <script>
-        // DATOS PROPORCIONADOS POR EL SOCIO (Limpiados automáticamente por el código)
-        const URL_BRUTA = 'https://wsaxismjuiyvapdknjoi.supabase.co/rest/v1/';
-        const KEY_BRUTA = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50';
+        const sb = supabase.createClient('https://wsaxismjuiyvapdknjoi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYXhpc21qdWl5dmFwZGtuam9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4ODQxODMsImV4cCI6MjEwMjQ2MDE4M30.athADmclWSEjUDCPZX2agiUgEDiEzKZipal24BbQs50');
 
-        // LIMPIEZA QUIRÚRGICA DE URL
-        const URL_LIMPIA = URL_BRUTA.replace(/\/rest\/v1\/?$/, '').trim();
-        const KEY_LIMPIA = KEY_BRUTA.trim();
-
-        let sb;
-        let partida = JSON.parse(localStorage.getItem('enigma_save')) || { id: 1, mochila: [] };
-
-        window.onload = async () => {
-            try {
-                if (typeof supabase === 'undefined') throw new Error("La librería Supabase no ha cargado.");
-                
-                sb = supabase.createClient(URL_LIMPIA, KEY_LIMPIA);
-                await cargarEscena(partida.id);
-            } catch (e) {
-                mostrarError(e.message);
-            }
-        };
-
-        async function cargarEscena(id) {
-            document.getElementById('status').innerText = "Buscando escena " + id + "...";
+        async function cargar(id) {
+            const { data: esc } = await sb.from('escenas').select('*').eq('id', id).single();
+            const { data: decs } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
             
-            const { data: esc, error: err1 } = await sb.from('escenas').select('*').eq('id', id).single();
-            const { data: decs, error: err2 } = await sb.from('decisiones').select('*').eq('escena_origen_id', id);
+            if(!esc) { alert("Error: No hay datos en Supabase."); return; }
 
-            if (err1 || !esc) {
-                return mostrarError("No se encuentra la escena con ID: " + id + ". Posiblemente las tablas de Supabase están vacías.");
-            }
-
-            // Actualizar Interfaz
-            document.getElementById('sc-titulo').innerText = esc.titulo_escena;
-            document.getElementById('sc-texto').innerText = esc.texto_narrativo;
+            document.getElementById('titulo').innerText = esc.titulo_escena;
+            document.getElementById('texto').innerText = esc.texto_narrativo;
             
-            const imgCont = document.getElementById('img-cont');
-            if (esc.imagen_url) {
-                document.getElementById('sc-img').src = esc.imagen_url;
-                imgCont.classList.remove('hidden');
-            } else {
-                imgCont.classList.add('hidden');
-            }
+            if(esc.imagen_url) {
+                document.getElementById('foto').src = esc.imagen_url;
+                document.getElementById('img-cont').classList.remove('hidden');
+            } else { document.getElementById('img-cont').classList.add('hidden'); }
 
-            const divOpciones = document.getElementById('sc-opciones');
-            divOpciones.innerHTML = '';
-
-            if (decs) {
-                decs.forEach(d => {
-                    const b = document.createElement('button');
-                    b.className = "btn";
-                    
-                    const bloqueado = d.item_requerido && !partida.mochila.includes(d.item_requerido);
-                    
-                    b.innerHTML = bloqueado 
-                        ? `<span class="opacity-40">🔒 ${d.texto_boton}</span> <span class="float-right text-[10px] gold uppercase pt-1">Necesitas ${d.item_requerido}</span>` 
-                        : `<span>${d.texto_boton}</span> <span class="float-right gold">→</span>`;
-                    
-                    b.disabled = bloqueado;
-                    
-                    b.onclick = () => {
-                        if (d.item_entregado && !partida.mochila.includes(d.item_entregado)) {
-                            partida.mochila.push(d.item_entregado);
-                        }
-                        partida.id = d.escena_destino_id;
-                        localStorage.setItem('enigma_save', JSON.stringify(partida));
-                        cargarEscena(d.escena_destino_id);
-                    };
-                    divOpciones.appendChild(b);
-                });
-            }
-            
-            document.getElementById('status').innerText = "Mochila: " + (partida.mochila.join(', ') || "Vacía");
+            const div = document.getElementById('opciones');
+            div.innerHTML = '';
+            decs.forEach(d => {
+                const btn = document.createElement('button');
+                btn.className = "w-full p-4 border border-yellow-600/40 rounded-xl hover:bg-yellow-600/10 transition text-left";
+                btn.innerText = d.texto_boton;
+                btn.onclick = () => cargar(d.escena_destino_id);
+                div.appendChild(btn);
+            });
         }
-
-        function mostrarError(msg) {
-            document.getElementById('debug-error').classList.remove('hidden');
-            document.getElementById('error-msg').innerText = msg;
-            document.getElementById('status').innerText = "ERROR DE SISTEMA";
-            document.getElementById('sc-titulo').innerText = "Error Crítico";
-        }
-
-        function borrarYReiniciar() {
-            localStorage.removeItem('enigma_save');
-            location.reload();
-        }
+        
+        window.onload = () => { localStorage.clear(); cargar(1); };
     </script>
 </body>
 </html>
